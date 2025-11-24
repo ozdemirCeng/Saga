@@ -37,5 +37,8 @@ namespace Saga.Server.Models
 
         [Column("guncelleme_zamani")]
         public DateTime GuncellemeZamani { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
+        public ICollection<ListeIcerigi> Icerikler { get; set; } = new List<ListeIcerigi>();
     }
 }
