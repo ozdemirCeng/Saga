@@ -1,5 +1,25 @@
 namespace Saga.Server.DTOs
 {
+    // Basit aktivite DTO (kullanıcı profili için)
+    public class AktiviteDto
+    {
+        public long Id { get; set; }
+        public Guid KullaniciId { get; set; }
+        public string KullaniciAdi { get; set; } = null!;
+        public string? AvatarUrl { get; set; }
+        public string AktiviteTuru { get; set; } = null!;
+        public long? IcerikId { get; set; }
+        public string? IcerikBaslik { get; set; }
+        public string? PosterUrl { get; set; }
+        public long? YorumId { get; set; }
+        public long? PuanlamaId { get; set; }
+        public decimal? Puan { get; set; }
+        public long? ListeId { get; set; }
+        public string? ListeAdi { get; set; }
+        public string? Veri { get; set; }
+        public DateTime OlusturulmaZamani { get; set; }
+    }
+
     // Feed için aktivite item'ı
     public class AktiviteFeedDto
     {

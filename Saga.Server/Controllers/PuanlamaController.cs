@@ -244,6 +244,48 @@ namespace Saga.Server.Controllers
             return Ok(istatistik);
         }
 
+        // GET: api/puanlama/icerik/{icerikId}/benim
+        // Proje İsterler 2.1.4: Kullanıcının bu içerik için verdiği puanı getir
+        [HttpGet("icerik/{icerikId}/benim")]
+        [Authorize]
+        public async Task<ActionResult<PuanlamaResponseDto>> GetKullaniciIcerikPuani(long icerikId)
+        {
+            try
+            {
+                var kullaniciId = GetCurrentUserId();
+
+                var puanlama = await _context.Puanlamalar
+                    .Include(p => p.Kullanici)
+                    .Include(p => p.Icerik)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.KullaniciId == kullaniciId && p.IcerikId == icerikId && !p.Silindi);
+
+                if (puanlama == null)
+                {
+                    return NotFound(new { message = "Bu içerik için henüz puanlama yapmadınız." });
+                }
+
+                var response = new PuanlamaResponseDto
+                {
+                    Id = puanlama.Id,
+                    IcerikId = puanlama.IcerikId,
+                    KullaniciId = puanlama.KullaniciId,
+                    KullaniciAdi = puanlama.Kullanici.KullaniciAdi,
+                    IcerikBaslik = puanlama.Icerik.Baslik,
+                    Puan = puanlama.Puan,
+                    OlusturulmaZamani = puanlama.OlusturulmaZamani,
+                    GuncellemeZamani = puanlama.GuncellemeZamani
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kullanıcı puanlaması getirilemedi: {IcerikId}", icerikId);
+                return StatusCode(500, new { message = "Puanlama getirilemedi." });
+            }
+        }
+
         // GET: api/puanlama/kullanici/{kullaniciId}
         [HttpGet("kullanici/{kullaniciId}")]
         public async Task<ActionResult<List<PuanlamaResponseDto>>> GetKullaniciPuanlamalari(Guid kullaniciId)

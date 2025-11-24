@@ -268,6 +268,51 @@ namespace Saga.Server.Controllers
             return Ok(response);
         }
 
+        // GET: api/kutuphane/icerik/{icerikId}/benim
+        // Proje İsterler 2.1.4: Kullanıcının bu içerik için kütüphane durumunu getir
+        [HttpGet("icerik/{icerikId}/benim")]
+        [Authorize]
+        public async Task<ActionResult<KutuphaneDurumDto>> GetKullaniciIcerikDurumu(long icerikId)
+        {
+            try
+            {
+                var kullaniciId = GetCurrentUserId();
+
+                var kutuphaneDurum = await _context.KutuphaneDurumlari
+                    .Include(k => k.Icerik)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(k => k.KullaniciId == kullaniciId && k.IcerikId == icerikId && !k.Silindi);
+
+                if (kutuphaneDurum == null)
+                {
+                    return NotFound(new { message = "Bu içerik için kütüphane durumu bulunamadı." });
+                }
+
+                var response = new KutuphaneDurumDto
+                {
+                    Id = kutuphaneDurum.Id,
+                    KullaniciId = kutuphaneDurum.KullaniciId,
+                    IcerikId = kutuphaneDurum.IcerikId,
+                    IcerikBaslik = kutuphaneDurum.Icerik.Baslik,
+                    IcerikTur = kutuphaneDurum.Icerik.Tur.ToString(),
+                    PosterUrl = kutuphaneDurum.Icerik.PosterUrl,
+                    Durum = kutuphaneDurum.Durum.ToString(),
+                    Ilerleme = kutuphaneDurum.Ilerleme,
+                    BaslangicTarihi = kutuphaneDurum.BaslangicTarihi,
+                    BitisTarihi = kutuphaneDurum.BitisTarihi,
+                    OlusturulmaZamani = kutuphaneDurum.OlusturulmaZamani,
+                    GuncellemeZamani = kutuphaneDurum.GuncellemeZamani
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Kullanıcı kütüphane durumu getirilemedi: {IcerikId}", icerikId);
+                return StatusCode(500, new { message = "Kütüphane durumu getirilemedi." });
+            }
+        }
+
         // GET: api/kutuphane/kullanici/{kullaniciId}/istatistik
         [HttpGet("kullanici/{kullaniciId}/istatistik")]
         public async Task<ActionResult<KutuphaneIstatistikDto>> GetKullaniciIstatistik(Guid kullaniciId)

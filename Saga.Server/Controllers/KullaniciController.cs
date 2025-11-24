@@ -330,6 +330,49 @@ namespace Saga.Server.Controllers
             return Ok(result);
         }
 
+        // GET: api/kullanici/{id}/aktiviteler
+        // Proje İsterler 2.1.5: Kullanıcının son aktiviteleri
+        [HttpGet("{id}/aktiviteler")]
+        public async Task<ActionResult<List<AktiviteDto>>> GetKullaniciAktiviteleri(
+            Guid id,
+            [FromQuery] int sayfa = 1,
+            [FromQuery] int limit = 20)
+        {
+            var aktiviteler = await _context.Aktiviteler
+                .Include(a => a.Kullanici)
+                .Include(a => a.Icerik)
+                .Include(a => a.Yorum)
+                .Include(a => a.Puanlama)
+                .Include(a => a.Liste)
+                .Where(a => a.KullaniciId == id)
+                .OrderByDescending(a => a.OlusturulmaZamani)
+                .Skip((sayfa - 1) * limit)
+                .Take(limit)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var response = aktiviteler.Select(a => new AktiviteDto
+            {
+                Id = a.Id,
+                KullaniciId = a.KullaniciId,
+                KullaniciAdi = a.Kullanici.KullaniciAdi,
+                AvatarUrl = a.Kullanici.AvatarUrl,
+                AktiviteTuru = a.AktiviteTuru.ToString(),
+                IcerikId = a.IcerikId,
+                IcerikBaslik = a.Icerik?.Baslik,
+                PosterUrl = a.Icerik?.PosterUrl,
+                YorumId = a.YorumId,
+                PuanlamaId = a.PuanlamaId,
+                Puan = a.Puanlama?.Puan,
+                ListeId = a.ListeId,
+                ListeAdi = a.Liste?.Ad,
+                Veri = a.Veri,
+                OlusturulmaZamani = a.OlusturulmaZamani
+            }).ToList();
+
+            return Ok(response);
+        }
+
         // Helper Methods
         private Guid GetCurrentUserId()
         {
