@@ -41,5 +41,8 @@ namespace Saga.Server.Models
 
         [Column("guncelleme_zamani")]
         public DateTime? GuncellemeZamani { get; set; }
+
+        // Navigation properties
+        public ICollection<YorumBegeni> Begenenler { get; set; } = new List<YorumBegeni>();
     }
 }
