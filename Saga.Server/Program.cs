@@ -4,8 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Saga.Server.Data;
 using Saga.Server.Models;
-using Saga.Server.Services; // <--- TokenService buradan geliyor
-using System.Text;
+using Saga.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,18 +40,30 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 4. AUTH
-var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "saga_super_gizli_anahtar_32_karakter_olmali");
+// 4. AUTH - SUPABASE JWT VALIDATION
+var supabaseUrl = builder.Configuration["Supabase:Url"] ?? throw new Exception("Supabase URL bulunamadı!");
+var supabaseProjectRef = new Uri(supabaseUrl).Host.Split('.')[0]; // iabkzwsosqpcghjqkbzt
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = $"{supabaseUrl}/auth/v1";
+        options.Audience = "authenticated";
+        options.RequireHttpsMetadata = true;
+        
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateIssuer = true,
+            ValidIssuer = $"{supabaseUrl}/auth/v1",
+            ValidateAudience = true,
+            ValidAudience = "authenticated",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
         };
+
+        // JWKS endpoint (modern ECC P-256 keys)
+        options.MetadataAddress = $"{supabaseUrl}/auth/v1/.well-known/jwks.json";
     });
 
 builder.Services.AddControllers();
