@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Saga.Server.Data;
 using Saga.Server.DTOs;
 using Saga.Server.Models;
-using Saga.Server.DTOs;
-using Saga.Server.Models;
 
 namespace Saga.Server.Controllers
 {

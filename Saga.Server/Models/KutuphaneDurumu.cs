@@ -12,9 +12,11 @@ namespace Saga.Server.Models
 
         [Column("kullanici_id")]
         public Guid KullaniciId { get; set; }
+        public Kullanici Kullanici { get; set; } = null!;
 
         [Column("icerik_id")]
         public long IcerikId { get; set; }
+        public Icerik Icerik { get; set; } = null!;
 
         [Column("durum")]
         public KutuphaneDurum Durum { get; set; }
@@ -29,7 +31,7 @@ namespace Saga.Server.Models
         public DateOnly? BitisTarihi { get; set; }
 
         [Column("silindi")]
-        public bool Silindi { get; set; }
+        public bool Silindi { get; set; } = false;
 
         [Column("olusturulma_zamani")]
         public DateTime OlusturulmaZamani { get; set; } = DateTime.UtcNow;

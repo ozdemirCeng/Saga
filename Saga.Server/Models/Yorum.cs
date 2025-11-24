@@ -1,10 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Saga.Server.Models
 {
     [Table("yorumlar")]
     public class Yorum
     {
+        [Key]
         [Column("id")]
         public long Id { get; set; }
 
@@ -14,6 +16,7 @@ namespace Saga.Server.Models
 
         [Column("icerik_id")]
         public long IcerikId { get; set; }
+        public Icerik Icerik { get; set; } = null!;
 
         [Column("baslik")]
         public string? Baslik { get; set; }
@@ -25,16 +28,16 @@ namespace Saga.Server.Models
         public decimal? Puan { get; set; }
 
         [Column("begeni_sayisi")]
-        public int BegeniSayisi { get; set; }
+        public int BegeniSayisi { get; set; } = 0;
 
         [Column("spoiler_iceriyor")]
-        public bool SpoilerIceriyor { get; set; }
+        public bool SpoilerIceriyor { get; set; } = false;
 
         [Column("silindi")]
-        public bool Silindi { get; set; }
+        public bool Silindi { get; set; } = false;
 
         [Column("olusturulma_zamani")]
-        public DateTime OlusturulmaZamani { get; set; }
+        public DateTime OlusturulmaZamani { get; set; } = DateTime.UtcNow;
 
         [Column("guncelleme_zamani")]
         public DateTime? GuncellemeZamani { get; set; }

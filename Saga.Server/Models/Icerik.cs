@@ -50,6 +50,10 @@ namespace Saga.Server.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public decimal PopulerlikSkoru { get; set; }
 
+        // Generated tsvector column - EF tarafından ignore edilir
+        [NotMapped]
+        public string? AramaVektoru { get; set; }
+
         [Column("silindi")]
         public bool Silindi { get; set; }
 

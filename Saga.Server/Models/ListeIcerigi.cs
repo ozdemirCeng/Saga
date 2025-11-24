@@ -1,18 +1,23 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Saga.Server.Models
 {
     [Table("liste_icerikleri")]
     public class ListeIcerigi
     {
-        [Column("liste_id")]
+        [Key]
+        [Column("liste_id", Order = 0)]
         public long ListeId { get; set; }
+        public Liste Liste { get; set; } = null!;
 
-        [Column("icerik_id")]
+        [Key]
+        [Column("icerik_id", Order = 1)]
         public long IcerikId { get; set; }
+        public Icerik Icerik { get; set; } = null!;
 
         [Column("sira")]
-        public int Sira { get; set; }
+        public int Sira { get; set; } = 0;
 
         [Column("not_metni")]
         public string? NotMetni { get; set; }

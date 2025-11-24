@@ -12,9 +12,11 @@ namespace Saga.Server.Models
 
         [Column("alici_id")]
         public Guid AliciId { get; set; }
+        public Kullanici Alici { get; set; } = null!;
 
         [Column("gonderen_id")]
         public Guid? GonderenId { get; set; }
+        public Kullanici? Gonderen { get; set; }
 
         [Column("tip")]
         public string Tip { get; set; } = null!;
@@ -32,7 +34,7 @@ namespace Saga.Server.Models
         public bool Okundu { get; set; } = false;
 
         [Column("silindi")]
-        public bool Silindi { get; set; }
+        public bool Silindi { get; set; } = false;
 
         [Column("olusturulma_zamani")]
         public DateTime OlusturulmaZamani { get; set; } = DateTime.UtcNow;

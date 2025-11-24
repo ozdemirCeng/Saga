@@ -19,23 +19,27 @@ namespace Saga.Server.Models
 
         [Column("icerik_id")]
         public long? IcerikId { get; set; }
+        public Icerik? Icerik { get; set; }
 
         [Column("puanlama_id")]
         public long? PuanlamaId { get; set; }
+        public Puanlama? Puanlama { get; set; }
 
         [Column("yorum_id")]
         public long? YorumId { get; set; }
+        public Yorum? Yorum { get; set; }
 
         [Column("liste_id")]
         public long? ListeId { get; set; }
+        public Liste? Liste { get; set; }
 
         [Column("veri", TypeName = "jsonb")]
         public string Veri { get; set; } = "{}";
 
         [Column("silindi")]
-        public bool Silindi { get; set; }
+        public bool Silindi { get; set; } = false;
 
         [Column("olusturulma_zamani")]
-        public DateTime OlusturulmaZamani { get; set; }
+        public DateTime OlusturulmaZamani { get; set; } = DateTime.UtcNow;
     }
 }

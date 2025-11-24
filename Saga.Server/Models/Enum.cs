@@ -17,6 +17,7 @@
     public enum KullaniciRol
     {
         yonetici,
+        moderator,
         kullanici
     }
 
@@ -24,9 +25,9 @@
     {
         puanlama,
         yorum,
-        liste_olusturma,
-        icerik_ekleme,
-        takip
+        listeye_ekleme,
+        takip,
+        durum_guncelleme
     }
 
     public enum ListeTuru
@@ -38,11 +39,9 @@
     public enum KutuphaneDurum
     {
         izlendi,
-        izleniyor,
         izlenecek,
         okundu,
-        okunuyor,
         okunacak,
-        birakildi
+        devam_ediyor
     }
 }

@@ -12,6 +12,7 @@ namespace Saga.Server.Models
 
         [Column("kullanici_id")]
         public Guid KullaniciId { get; set; }
+        public Kullanici Kullanici { get; set; } = null!;
 
         [Column("ad")]
         public string Ad { get; set; } = null!;
@@ -26,10 +27,10 @@ namespace Saga.Server.Models
         public bool HerkeseAcik { get; set; } = true;
 
         [Column("icerik_sayisi")]
-        public int IcerikSayisi { get; set; }
+        public int IcerikSayisi { get; set; } = 0;
 
         [Column("silindi")]
-        public bool Silindi { get; set; }
+        public bool Silindi { get; set; } = false;
 
         [Column("olusturulma_zamani")]
         public DateTime OlusturulmaZamani { get; set; } = DateTime.UtcNow;
