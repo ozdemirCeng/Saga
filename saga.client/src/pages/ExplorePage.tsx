@@ -19,6 +19,7 @@ import {
   Flex,
   ActionIcon,
   Collapse,
+  Tabs,
 } from '@mantine/core';
 import { IconSearch, IconFilter, IconX, IconStar } from '@tabler/icons-react';
 import { useSearchContent, useFilteredContent } from '../hooks/useIcerikler';
@@ -26,6 +27,9 @@ import { useNavigate } from 'react-router';
 import { useDebouncedValue } from '@mantine/hooks';
 import { ContentCardSkeleton } from '../components/ContentCardSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import { useQuery } from '@tanstack/react-query';
+import { externalApiService } from '../services/externalApiService';
+import { notifications } from '@mantine/notifications';
 
 const filmTurleri = [
   'Aksiyon',
@@ -73,6 +77,7 @@ export default function ExplorePage() {
   // Arama state
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery] = useDebouncedValue(searchQuery, 500);
+  const [activeTab, setActiveTab] = useState<'database' | 'tmdb' | 'books'>('database');
 
   // Filtre state
   const [showFilters, setShowFilters] = useState(false);
@@ -87,8 +92,8 @@ export default function ExplorePage() {
   const isSearching = debouncedQuery.length > 2;
   const hasFilters = tur || turler.length > 0 || minPuan || maxPuan || minYil || maxYil;
 
-  // Query hooks
-  const { data: searchResults, isLoading: searchLoading } = useSearchContent(debouncedQuery);
+  // Query hooks - Database
+  const { data: searchResults, isLoading: searchLoading } = useSearchContent(debouncedQuery, { enabled: isSearching && activeTab === 'database' });
   const { data: filterResults, isLoading: filterLoading } = useFilteredContent({
     tur,
     turler: turler.length > 0 ? turler : undefined,
@@ -96,15 +101,65 @@ export default function ExplorePage() {
     maxPuan,
     minYil,
     maxYil,
+    limit: 50
+  }, { enabled: activeTab === 'database' });
+
+  // Query hooks - External APIs
+  const { data: tmdbResults, isLoading: tmdbLoading } = useQuery({
+    queryKey: ['tmdb-search', debouncedQuery],
+    queryFn: () => isSearching ? externalApiService.searchTmdbFilms(debouncedQuery) : externalApiService.getPopularTmdbFilms(),
+    enabled: activeTab === 'tmdb'
   });
 
-  // Hangi sonuçları göstereceğimizi belirle
-  const isLoading = searchLoading || filterLoading;
-  const results = isSearching 
-    ? searchResults 
-    : hasFilters 
-    ? filterResults?.items 
-    : [];
+  const { data: booksResults, isLoading: booksLoading } = useQuery({
+    queryKey: ['books-search', debouncedQuery],
+    queryFn: () => externalApiService.searchGoogleBooks(debouncedQuery, 0, 40),
+    enabled: activeTab === 'books' && isSearching
+  });
+
+  // Initial load for "all content" if no search/filter
+  const { data: allContent, isLoading: allContentLoading } = useFilteredContent({
+    limit: 50
+  }, { enabled: activeTab === 'database' && !isSearching && !hasFilters });
+
+  // Determine which results to display
+  let displayResults: any[] = [];
+  let isContentLoading = false;
+
+  if (activeTab === 'database') {
+    displayResults = isSearching 
+      ? searchResults ?? []
+      : hasFilters 
+        ? filterResults ?? []
+        : allContent ?? [];
+    isContentLoading = isSearching ? searchLoading : hasFilters ? filterLoading : allContentLoading;
+  } else if (activeTab === 'tmdb') {
+    displayResults = (tmdbResults ?? []).map(film => ({
+      id: film.id,
+      baslik: film.baslik,
+      posterUrl: film.posterUrl,
+      ortalamaPuan: film.puan,
+      tur: 'film' as const,
+      yayinTarihi: film.yayinTarihi,
+      aciklama: film.aciklama,
+      isExternal: true,
+      externalId: film.id
+    }));
+    isContentLoading = tmdbLoading;
+  } else if (activeTab === 'books') {
+    displayResults = (booksResults ?? []).map(book => ({
+      id: book.id,
+      baslik: book.baslik,
+      posterUrl: book.posterUrl,
+      ortalamaPuan: 0,
+      tur: 'kitap' as const,
+      yayinTarihi: book.yayinTarihi,
+      aciklama: book.aciklama,
+      isExternal: true,
+      externalId: book.id
+    }));
+    isContentLoading = booksLoading;
+  }
 
   const handleClearFilters = () => {
     setTur(undefined);
@@ -125,9 +180,24 @@ export default function ExplorePage() {
         {/* Başlık */}
         <Title order={1}>Keşfet</Title>
 
+        {/* Tabs for different sources */}
+        <Tabs value={activeTab} onChange={(value) => setActiveTab(value as any)}>
+          <Tabs.List>
+            <Tabs.Tab value="database">Tümü</Tabs.Tab>
+            <Tabs.Tab value="tmdb">TMDB'de Ara</Tabs.Tab>
+            <Tabs.Tab value="books">Kitap Ara</Tabs.Tab>
+          </Tabs.List>
+        </Tabs>
+
         {/* Arama Kutusu */}
         <TextInput
-          placeholder="Film veya kitap ara..."
+          placeholder={
+            activeTab === 'database' 
+              ? "Veritabanında ara..." 
+              : activeTab === 'tmdb'
+                ? "TMDB'de film ara..."
+                : "Google Books'ta kitap ara..."
+          }
           leftSection={<IconSearch size={16} />}
           size="lg"
           value={searchQuery}
@@ -141,7 +211,8 @@ export default function ExplorePage() {
           }
         />
 
-        {/* Filtreler */}
+        {/* Filtreler - Only for database tab */}
+        {activeTab === 'database' && (
         <Paper withBorder p="md">
           <Group justify="space-between" mb={showFilters ? 'md' : 0}>
             <Button
@@ -248,9 +319,10 @@ export default function ExplorePage() {
             </Grid>
           </Collapse>
         </Paper>
+        )}
 
         {/* Sonuçlar */}
-        {isLoading ? (
+        {isContentLoading ? (
           <Grid>
             {[...Array(12)].map((_, index) => (
               <Grid.Col key={index} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2 }}>
@@ -258,14 +330,14 @@ export default function ExplorePage() {
               </Grid.Col>
             ))}
           </Grid>
-        ) : results && results.length > 0 ? (
+        ) : displayResults && displayResults.length > 0 ? (
           <>
             <Text c="dimmed">
-              {results.length} sonuç bulundu
+              {displayResults.length} sonuç bulundu
             </Text>
             <Grid>
-              {results.map((icerik) => (
-                <Grid.Col key={icerik.id} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2 }}>
+              {displayResults.map((icerik) => (
+                <Grid.Col key={icerik.id} span={{ base: 6, xs: 6, sm: 4, md: 3, lg: 2 }}>
                   <Card
                     shadow="sm"
                     padding="lg"
@@ -284,7 +356,17 @@ export default function ExplorePage() {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = '';
                     }}
-                    onClick={() => navigate(`/icerik/${icerik.id}`)}
+                    onClick={() => {
+                      if (icerik.isExternal) {
+                        notifications.show({
+                          title: 'Henüz Eklenmemiş',
+                          message: 'Bu içerik henüz veritabanına eklenmemiş. Önce kütüphanenize ekleyin.',
+                          color: 'orange',
+                        });
+                      } else {
+                        navigate(`/icerik/${icerik.id}`);
+                      }
+                    }}
                   >
                     <Card.Section>
                       <Image
@@ -305,7 +387,7 @@ export default function ExplorePage() {
                           {icerik.tur === 'film' ? 'Film' : 'Kitap'}
                         </Badge>
 
-                        {icerik.ortalamaPuan > 0 && (
+                        {(icerik.ortalamaPuan ?? 0) > 0 && (
                           <Group gap={4}>
                             <IconStar size={14} fill="gold" color="gold" />
                             <Text size="xs" fw={500}>
@@ -333,10 +415,11 @@ export default function ExplorePage() {
             description={isSearching ? 'Farklı bir arama terimi deneyin' : 'Filtreleri değiştirmeyi deneyin'}
           />
         ) : (
+           // Should not happen with default load, but fallback
           <EmptyState
             icon={<IconSearch size={48} stroke={1.5} color="gray" />}
-            title="Arama Yapın"
-            description="Film veya kitap aramak için yukarıdaki arama kutusunu kullanın veya filtreleri kullanarak içerikleri keşfedin"
+            title="İçerik Bulunamadı"
+            description="Henüz içerik eklenmemiş olabilir."
           />
         )}
       </Stack>

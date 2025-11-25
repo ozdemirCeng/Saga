@@ -52,7 +52,7 @@ export interface FeedFilterDto {
 // API Functions
 export const aktiviteService = {
   // Ana feed (takip edilenler + kendi)
-  getFeed: async (params?: FeedFilterDto): Promise<{ items: AktiviteFeedDto[]; toplam: number }> => {
+  getFeed: async (params?: FeedFilterDto): Promise<AktiviteFeedDto[]> => {
     const response = await api.get('/aktivite/feed', { params });
     return response.data;
   },
@@ -65,7 +65,7 @@ export const aktiviteService = {
       page?: number;
       limit?: number;
     }
-  ): Promise<{ items: AktiviteDto[]; toplam: number }> => {
+  ): Promise<AktiviteDto[]> => {
     const response = await api.get(`/aktivite/kullanici/${kullaniciId}`, { params });
     return response.data;
   },
@@ -75,7 +75,7 @@ export const aktiviteService = {
     aktiviteTuru?: string;
     page?: number;
     limit?: number;
-  }): Promise<{ items: AktiviteDto[]; toplam: number }> => {
+  }): Promise<AktiviteDto[]> => {
     const response = await api.get('/aktivite', { params });
     return response.data;
   },
@@ -88,7 +88,7 @@ export const aktiviteService = {
       page?: number;
       limit?: number;
     }
-  ): Promise<{ items: AktiviteFeedDto[]; toplam: number }> => {
+  ): Promise<AktiviteFeedDto[]> => {
     const response = await api.get(`/aktivite/icerik/${icerikId}`, { params });
     return response.data;
   },

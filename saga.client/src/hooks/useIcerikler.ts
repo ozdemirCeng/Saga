@@ -35,20 +35,20 @@ export const useRecommendedContent = () => {
 };
 
 // Detay Getir
-export const useContentDetail = (id: string | undefined) => {
+export const useContentDetail = (id: number | null) => {
     return useQuery({
         queryKey: ['icerik', 'detay', id],
         queryFn: () => icerikService.getById(id!),
-        enabled: !!id, // ID yoksa istek atma
+        enabled: typeof id === 'number' && id > 0,
     });
 };
 
 // Arama Yap
-export const useSearchContent = (query: string) => {
+export const useSearchContent = (query: string, options?: { enabled?: boolean }) => {
     return useQuery({
         queryKey: ['icerik', 'arama', query],
         queryFn: () => icerikService.search(query),
-        enabled: query.length > 2, // 2 harften azsa arama yapma
+        enabled: options?.enabled !== undefined ? options.enabled : query.length > 2,
     });
 };
 
@@ -63,18 +63,18 @@ export const useFilteredContent = (filters: {
     maxYil?: number;
     page?: number;
     limit?: number;
-}) => {
+}, options?: { enabled?: boolean }) => {
     return useQuery({
         queryKey: ['icerik', 'filter', filters],
         queryFn: () => icerikService.filter(filters),
-        enabled: Object.keys(filters).length > 0,
+        enabled: options?.enabled !== undefined ? options.enabled : true,
     });
 };
 
-export const useContentComments = (icerikId: number) => {
+export const useContentComments = (icerikId: number | null) => {
     return useQuery({
         queryKey: ['yorumlar', icerikId],
-        queryFn: () => yorumService.getByIcerik(icerikId),
-        enabled: !!icerikId,
+        queryFn: () => yorumService.getByIcerik(icerikId!),
+        enabled: typeof icerikId === 'number' && icerikId > 0,
     });
 };

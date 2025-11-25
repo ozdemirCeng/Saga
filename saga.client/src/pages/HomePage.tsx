@@ -100,7 +100,7 @@ function ContentSection({
       {isLoading ? (
         <Grid>
           {[...Array(6)].map((_, index) => (
-            <Grid.Col key={index} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2 }}>
+            <Grid.Col key={index} span={{ base: 6, xs: 6, sm: 4, md: 3, lg: 2 }}>
               <ContentCardSkeleton />
             </Grid.Col>
           ))}
@@ -121,7 +121,7 @@ function ContentSection({
       ) : (
         <Grid>
           {data.slice(0, 6).map((icerik) => (
-            <Grid.Col key={icerik.id} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2 }}>
+            <Grid.Col key={icerik.id} span={{ base: 6, xs: 6, sm: 4, md: 3, lg: 2 }}>
               <ContentCard icerik={icerik} />
             </Grid.Col>
           ))}

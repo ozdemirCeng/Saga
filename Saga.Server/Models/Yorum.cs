@@ -42,6 +42,14 @@ namespace Saga.Server.Models
         [Column("guncelleme_zamani")]
         public DateTime? GuncellemeZamani { get; set; }
 
+        [Column("ust_yorum_id")]
+        public long? UstYorumId { get; set; }
+
+        [ForeignKey("UstYorumId")]
+        public Yorum? UstYorum { get; set; }
+
+        public ICollection<Yorum> Yanitlar { get; set; } = new List<Yorum>();
+
         // Navigation properties
         public ICollection<YorumBegeni> Begenenler { get; set; } = new List<YorumBegeni>();
     }

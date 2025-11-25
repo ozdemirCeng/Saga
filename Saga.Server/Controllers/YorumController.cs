@@ -37,7 +37,8 @@ namespace Saga.Server.Controllers
                     IcerikMetni = dto.Icerik,
                     Puan = dto.Puan,
                     SpoilerIceriyor = dto.SpoilerIceriyor,
-                    OlusturulmaZamani = DateTime.UtcNow
+                    OlusturulmaZamani = DateTime.UtcNow,
+                    UstYorumId = dto.UstYorumId
                 };
 
                 _context.Yorumlar.Add(yorum);
@@ -62,7 +63,8 @@ namespace Saga.Server.Controllers
                     BegeniSayisi = 0,
                     OlusturulmaZamani = yorum.OlusturulmaZamani,
                     GuncellemeZamani = yorum.GuncellemeZamani,
-                    KullaniciBegendiMi = false
+                    KullaniciBegendiMi = false,
+                    UstYorumId = yorum.UstYorumId
                 };
 
                 return CreatedAtAction(nameof(GetYorum), new { id = yorum.Id }, response);
@@ -221,7 +223,11 @@ namespace Saga.Server.Controllers
             var query = _context.Yorumlar
                 .Include(y => y.Kullanici)
                 .Include(y => y.Begenenler)
-                .Where(y => y.IcerikId == icerikId && !y.Silindi)
+                .Include(y => y.Yanitlar)
+                    .ThenInclude(r => r.Kullanici)
+                .Include(y => y.Yanitlar)
+                    .ThenInclude(r => r.Begenenler)
+                .Where(y => y.IcerikId == icerikId && !y.Silindi && y.UstYorumId == null)
                 .OrderByDescending(y => y.OlusturulmaZamani)
                 .AsNoTracking();
 
@@ -234,6 +240,7 @@ namespace Saga.Server.Controllers
             var response = yorumlar.Select(y => new YorumListDto
             {
                 Id = y.Id,
+                KullaniciId = y.KullaniciId,
                 KullaniciAdi = y.Kullanici.KullaniciAdi,
                 KullaniciAvatar = y.Kullanici.AvatarUrl,
                 Baslik = y.Baslik,
@@ -241,7 +248,27 @@ namespace Saga.Server.Controllers
                 Puan = y.Puan,
                 SpoilerIceriyor = y.SpoilerIceriyor,
                 BegeniSayisi = y.Begenenler.Count,
-                OlusturulmaZamani = y.OlusturulmaZamani
+                KullaniciBegendiMi = kullaniciId.HasValue && y.Begenenler.Any(b => b.KullaniciId == kullaniciId.Value),
+                OlusturulmaZamani = y.OlusturulmaZamani,
+                UstYorumId = y.UstYorumId,
+                Yanitlar = y.Yanitlar
+                    .Where(r => !r.Silindi)
+                    .OrderBy(r => r.OlusturulmaZamani)
+                    .Select(r => new YorumListDto
+                    {
+                        Id = r.Id,
+                        KullaniciId = r.KullaniciId,
+                        KullaniciAdi = r.Kullanici.KullaniciAdi,
+                        KullaniciAvatar = r.Kullanici.AvatarUrl,
+                        Baslik = r.Baslik,
+                        IcerikOzet = r.IcerikMetni,
+                        Puan = r.Puan,
+                        SpoilerIceriyor = r.SpoilerIceriyor,
+                        BegeniSayisi = r.Begenenler.Count,
+                        KullaniciBegendiMi = kullaniciId.HasValue && r.Begenenler.Any(b => b.KullaniciId == kullaniciId.Value),
+                        OlusturulmaZamani = r.OlusturulmaZamani,
+                        UstYorumId = r.UstYorumId
+                    }).ToList()
             }).ToList();
 
             Response.Headers.Append("X-Toplam-Sayfa", ((toplam + sayfaBoyutu - 1) / sayfaBoyutu).ToString());

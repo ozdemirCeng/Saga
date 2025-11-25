@@ -90,7 +90,7 @@ export const listeService = {
     tur?: string;
     page?: number;
     limit?: number;
-  }): Promise<{ items: ListeListDto[]; toplam: number }> => {
+  }): Promise<ListeListDto[]> => {
     const response = await api.get('/liste', { params });
     return response.data;
   },
@@ -103,7 +103,7 @@ export const listeService = {
       page?: number;
       limit?: number;
     }
-  ): Promise<{ items: ListeListDto[]; toplam: number }> => {
+  ): Promise<ListeListDto[]> => {
     const response = await api.get(`/liste/kullanici/${kullaniciId}`, { params });
     return response.data;
   },
@@ -113,7 +113,7 @@ export const listeService = {
     page?: number;
     limit?: number;
     search?: string;
-  }): Promise<{ items: ListeListDto[]; toplam: number }> => {
+  }): Promise<ListeListDto[]> => {
     const response = await api.get('/liste/genel', { params });
     return response.data;
   },

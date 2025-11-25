@@ -28,15 +28,19 @@ import {
   IconBookmark, 
   IconPlus, 
   IconCheck,
-  IconDotsVertical,
   IconX,
+  IconTrash,
+  IconHeart,
+  IconHeartFilled,
+  IconMessageCircle,
+    IconSearch,
 } from '@tabler/icons-react';
 import { useContentDetail, useContentComments } from '../hooks/useIcerikler';
 import { useInteractions } from '../hooks/useInteractions';
 import { useAuth } from '../context/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kutuphaneService } from '../services/kutuphaneService';
-import { listeService } from '../services/listeService';
+import { listeService, type ListeListDto } from '../services/listeService';
 import { notifications } from '@mantine/notifications';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { EmptyState } from '../components/EmptyState';
@@ -55,24 +59,23 @@ export default function ContentDetailPage() {
     const [kutuphaneModalOpen, setKutuphaneModalOpen] = useState(false);
     const [kutuphaneStatus, setKutuphaneStatus] = useState<string>('');
 
-    // Liste için
-    const [listeModalOpen, setListeModalOpen] = useState(false);
-    const [selectedListeId, setSelectedListeId] = useState<string>('');
+    const rawContentId = Number(id);
+    const hasValidContentId = Number.isInteger(rawContentId) && rawContentId > 0;
+    const contentId = hasValidContentId ? rawContentId : null;
+    const numericContentId = contentId ?? 0;
 
-    const contentId = Number(id) || 0;
-
-    const { data: icerik, isLoading: loadingIcerik } = useContentDetail(id);
+    const { data: icerik, isLoading: loadingIcerik } = useContentDetail(contentId);
     const { data: yorumlar, isLoading: loadingYorumlar } = useContentComments(contentId);
 
     // Kütüphane durumu
     const { data: kutuphaneDurum } = useQuery({
-        queryKey: ['kutuphane-durum', contentId],
-        queryFn: () => kutuphaneService.getByIcerik(contentId),
-        enabled: !!user && contentId > 0,
+        queryKey: ['kutuphane-durum', numericContentId],
+        queryFn: () => kutuphaneService.getByIcerik(numericContentId),
+        enabled: !!user && hasValidContentId,
     });
 
     // Kullanıcının listeleri
-    const { data: kullaniciListeleri } = useQuery({
+    const { data: kullaniciListeleri = [] } = useQuery<ListeListDto[]>({
         queryKey: ['my-lists'],
         queryFn: () => listeService.getMyLists(),
         enabled: !!user,
@@ -80,39 +83,40 @@ export default function ContentDetailPage() {
 
     // İçeriğin bulunduğu listeler
     const { data: icerikListeleri } = useQuery({
-        queryKey: ['content-lists', contentId],
-        queryFn: () => listeService.getContentLists(contentId),
-        enabled: !!user && contentId > 0,
+        queryKey: ['content-lists', numericContentId],
+        queryFn: () => listeService.getContentLists(numericContentId),
+        enabled: !!user && hasValidContentId,
     });
 
     // Etkileşim Hookları
-    const { rate, comment } = useInteractions();
+    const { rate, comment, deleteComment, likeComment } = useInteractions();
 
     // Kütüphane ekleme/güncelleme
     const kutuphaneMutation = useMutation({
         mutationFn: (durum: string) =>
             kutuphaneService.createOrUpdate({
-                icerikId: contentId,
+                icerikId: numericContentId,
                 durum: durum as any,
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['kutuphane-durum', contentId] });
+            queryClient.invalidateQueries({ queryKey: ['kutuphane-durum', numericContentId] });
             setKutuphaneModalOpen(false);
-            notifications.show({
-                title: 'Başarılı',
-                message: 'Kütüphane durumu güncellendi',
-                color: 'green',
-            });
+            if (hasValidContentId) {
+                notifications.show({
+                    title: 'Başarılı',
+                    message: 'Kütüphane durumu güncellendi',
+                    color: 'green',
+                });
+            }
         },
     });
 
     // Listeye ekleme
     const listeEkleMutation = useMutation({
         mutationFn: (listeId: number) =>
-            listeService.addContent(listeId, { icerikId: contentId }),
+            listeService.addContent(listeId, { icerikId: numericContentId }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['content-lists', contentId] });
-            setListeModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['content-lists', numericContentId] });
             notifications.show({
                 title: 'Başarılı',
                 message: 'İçerik listeye eklendi',
@@ -122,6 +126,18 @@ export default function ContentDetailPage() {
     });
 
     if (loadingIcerik) return <LoadingOverlay message="İçerik yükleniyor..." />;
+    if (!hasValidContentId) {
+        return (
+            <Container size="lg" py="xl">
+                <EmptyState
+                    icon={<IconSearch size={48} stroke={1.5} color="gray" />}
+                    title="İçerik Kütüphanede Bulunmuyor"
+                    description="Bu içerik henüz Saga kütüphanesine eklenmedi. Keşfet sayfasından eklemeyi deneyebilirsin."
+                    action={<Button onClick={() => navigate('/explore')}>Keşfet'e Dön</Button>}
+                />
+            </Container>
+        );
+    }
     if (!icerik) {
         return (
             <Container size="lg" py="xl">
@@ -244,8 +260,8 @@ export default function ContentDetailPage() {
                                 </Menu.Target>
 
                                 <Menu.Dropdown>
-                                    {kullaniciListeleri?.items && kullaniciListeleri.items.length > 0 ? (
-                                        kullaniciListeleri.items.map((liste) => {
+                                    {kullaniciListeleri.length > 0 ? (
+                                        kullaniciListeleri.map((liste) => {
                                             const listedeVar = icerikListeleri?.some(l => l.id === liste.id);
                                             return (
                                                 <Menu.Item
@@ -320,7 +336,7 @@ export default function ContentDetailPage() {
             {loadingYorumlar ? <Loader /> : (
                 <Stack>
                     {yorumlar?.map((yorum: any) => (
-                        <Paper key={yorum.id} withBorder p="md" radius="md" shadow="xs">
+                        <Paper key={yorum.id} withBorder p="md" radius="md" shadow="xs" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255, 255, 255, 0.8)' }}>
                             <Group justify="space-between" mb="sm">
                                 <Group>
                                     <Avatar src={yorum.kullaniciAvatar} alt={yorum.kullaniciAdi} radius="xl" />
@@ -329,14 +345,52 @@ export default function ContentDetailPage() {
                                         <Text size="xs" c="dimmed">{new Date(yorum.olusturulmaZamani).toLocaleDateString()}</Text>
                                     </div>
                                 </Group>
-                                {yorum.spoilerIceriyor && (
-                                    <Badge color="red" variant="light">SPOILER</Badge>
-                                )}
+                                <Group>
+                                    {yorum.spoilerIceriyor && (
+                                        <Badge color="red" variant="light">SPOILER</Badge>
+                                    )}
+                                    {user && user.id === yorum.kullaniciId && (
+                                        <ActionIcon 
+                                            color="red" 
+                                            variant="subtle" 
+                                            onClick={() => {
+                                                if (window.confirm('Yorumu silmek istediğinize emin misiniz?')) {
+                                                    deleteComment.mutate(yorum.id);
+                                                }
+                                            }}
+                                            loading={deleteComment.isPending}
+                                        >
+                                            <IconTrash size={16} />
+                                        </ActionIcon>
+                                    )}
+                                </Group>
                             </Group>
                             {yorum.baslik && (
                                 <Text fw={600} mb="xs">{yorum.baslik}</Text>
                             )}
                             <Text mt="sm">{yorum.icerikOzet || yorum.icerik}</Text>
+
+                            <Group mt="md" gap="xs">
+                                <Button 
+                                    variant="subtle" 
+                                    size="xs" 
+                                    color={yorum.kullaniciBegendiMi ? 'red' : 'gray'}
+                                    leftSection={yorum.kullaniciBegendiMi ? <IconHeartFilled size={16} /> : <IconHeart size={16} />}
+                                    onClick={() => likeComment.mutate(yorum.id)}
+                                >
+                                    {yorum.begeniSayisi} Beğeni
+                                </Button>
+                                
+                                <Button 
+                                    variant="subtle" 
+                                    size="xs" 
+                                    color="gray"
+                                    leftSection={<IconMessageCircle size={16} />}
+                                    onClick={() => notifications.show({ title: 'Yakında', message: 'Yanıtla özelliği yakında eklenecek!', color: 'blue' })}
+                                >
+                                    Yanıtla
+                                </Button>
+                            </Group>
                         </Paper>
                     ))}
                     {yorumlar?.length === 0 && <Text c="dimmed" ta="center">Henüz yorum yapılmamış. İlk yorumu sen yap!</Text>}

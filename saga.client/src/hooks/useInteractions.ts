@@ -63,8 +63,50 @@ export const useInteractions = () => {
         }
     });
 
+    // Yorum Silme Hook'u
+    const deleteCommentMutation = useMutation({
+        mutationFn: (yorumId: number) => yorumService.deleteYorum(yorumId),
+        onSuccess: () => {
+            notifications.show({
+                title: 'Başarılı',
+                message: 'Yorum silindi',
+                color: 'green',
+            });
+            // Yorum listesini yenile (hangi içerik olduğunu bilmediğimiz için tüm yorumları invalidate edebiliriz veya parametre alabiliriz)
+            // Ancak burada icerikId'ye erişimimiz yok. 
+            // Pratik çözüm: 'yorumlar' key'ini invalidate etmek.
+            queryClient.invalidateQueries({ queryKey: ['yorumlar'] });
+            queryClient.invalidateQueries({ queryKey: ['icerik', 'detay'] });
+        },
+        onError: (error: any) => {
+            notifications.show({
+                title: 'Hata',
+                message: error.response?.data?.message || "Yorum silinirken hata oluştu.",
+                color: 'red',
+            });
+        }
+    });
+
+    // Yorum Beğenme Hook'u
+    const likeCommentMutation = useMutation({
+        mutationFn: (yorumId: number) => yorumService.toggleLike(yorumId),
+        onSuccess: () => {
+            // Yorum listesini yenile
+            queryClient.invalidateQueries({ queryKey: ['yorumlar'] });
+        },
+        onError: (error: any) => {
+            notifications.show({
+                title: 'Hata',
+                message: error.response?.data?.message || "Beğeni işlemi başarısız.",
+                color: 'red',
+            });
+        }
+    });
+
     return {
         rate: rateMutation,
         comment: commentMutation,
+        deleteComment: deleteCommentMutation,
+        likeComment: likeCommentMutation,
     };
 };

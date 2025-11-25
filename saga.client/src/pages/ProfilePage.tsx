@@ -31,8 +31,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kullaniciService } from '../services/kullaniciService';
 import { kutuphaneService } from '../services/kutuphaneService';
-import { listeService } from '../services/listeService';
-import { aktiviteService } from '../services/aktiviteService';
+import { listeService, type ListeListDto } from '../services/listeService';
+import { aktiviteService, type AktiviteDto } from '../services/aktiviteService';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
@@ -76,7 +76,7 @@ export default function ProfilePage() {
   });
 
   // Listeler
-  const { data: listeler } = useQuery({
+  const { data: listeler = [] } = useQuery<ListeListDto[]>({
     queryKey: ['listeler', profil?.id],
     queryFn: () =>
       isOwnProfile
@@ -86,7 +86,7 @@ export default function ProfilePage() {
   });
 
   // Aktiviteler
-  const { data: aktiviteler } = useQuery({
+  const { data: aktiviteler = [] } = useQuery<AktiviteDto[]>({
     queryKey: ['aktiviteler', profil?.id],
     queryFn: () =>
       isOwnProfile
@@ -269,17 +269,17 @@ export default function ProfilePage() {
         <Tabs defaultValue="listeler">
           <Tabs.List>
             <Tabs.Tab value="listeler" leftSection={<IconList size={16} />}>
-              Listeler ({listeler?.items?.length || 0})
+              Listeler ({listeler.length})
             </Tabs.Tab>
             <Tabs.Tab value="aktiviteler" leftSection={<IconActivity size={16} />}>
-              Aktiviteler ({aktiviteler?.items?.length || 0})
+              Aktiviteler ({aktiviteler.length})
             </Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="listeler" pt="lg">
-            {listeler?.items && listeler.items.length > 0 ? (
+            {listeler.length > 0 ? (
               <Grid>
-                {listeler.items.map((liste) => (
+                {listeler.map((liste) => (
                   <Grid.Col key={liste.id} span={{ base: 12, sm: 6, md: 4 }}>
                     <Card
                       withBorder
@@ -313,9 +313,9 @@ export default function ProfilePage() {
           </Tabs.Panel>
 
           <Tabs.Panel value="aktiviteler" pt="lg">
-            {aktiviteler?.items && aktiviteler.items.length > 0 ? (
+            {aktiviteler.length > 0 ? (
               <Stack gap="md">
-                {aktiviteler.items.map((aktivite) => (
+                {aktiviteler.map((aktivite) => (
                   <Paper key={aktivite.id} withBorder p="md">
                     <Group>
                       {aktivite.posterUrl && (

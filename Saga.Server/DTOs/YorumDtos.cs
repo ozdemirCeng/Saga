@@ -19,6 +19,8 @@ namespace Saga.Server.DTOs
         public decimal? Puan { get; set; }
 
         public bool SpoilerIceriyor { get; set; } = false;
+
+        public long? UstYorumId { get; set; }
     }
 
     // Yorum güncelleme
@@ -55,19 +57,27 @@ namespace Saga.Server.DTOs
         
         // Kullanıcı bu yorumu beğendi mi?
         public bool KullaniciBegendiMi { get; set; }
+
+        public long? UstYorumId { get; set; }
+        public List<YorumResponseDto> Yanitlar { get; set; } = new();
     }
 
     // Yorum listesi için hafif DTO
     public class YorumListDto
     {
         public long Id { get; set; }
+        public Guid KullaniciId { get; set; } // Added
         public string KullaniciAdi { get; set; } = null!;
         public string? KullaniciAvatar { get; set; }
         public string? Baslik { get; set; }
         public string IcerikOzet { get; set; } = null!; // İlk 150 karakter
         public decimal? Puan { get; set; }
         public int BegeniSayisi { get; set; }
+        public bool KullaniciBegendiMi { get; set; } // Added
         public bool SpoilerIceriyor { get; set; }
         public DateTime OlusturulmaZamani { get; set; }
+
+        public long? UstYorumId { get; set; }
+        public List<YorumListDto> Yanitlar { get; set; } = new();
     }
 }

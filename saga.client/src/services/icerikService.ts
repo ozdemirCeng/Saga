@@ -22,7 +22,7 @@ export interface IcerikDetay extends Icerik {
 
 export const icerikService = {
     // Tüm içerikleri getir (Keşfet sayfası için)
-    getAll: async (page = 1, limit = 20) => {
+    getAll: async (page = 1, limit = 50) => {
         const response = await api.get<Icerik[]>('/icerikler', {
             params: { page, limit }
         });
@@ -31,12 +31,12 @@ export const icerikService = {
 
     // Popüler içerikleri getir (Ana sayfa vitrini için)
     getPopular: async () => {
-        const response = await api.get<Icerik[]>('/icerik/populer');
+        const response = await api.get<Icerik[]>('/icerik/populer', { params: { limit: 50 } });
         return response.data;
     },
 
     // İçerik detayını getir
-    getById: async (id: string) => {
+    getById: async (id: number) => {
         const response = await api.get<IcerikDetay>(`/icerik/${id}`);
         return response.data;
     },
@@ -49,10 +49,10 @@ export const icerikService = {
         return response.data;
     },
 
-    // Filtreli arama
+    // Filtreli arama (backend doğrudan Icerik[] döndürür)
     filter: async (params: {
         tur?: 'film' | 'kitap';
-        turler?: string[]; // Film türleri veya kitap kategorileri
+        turler?: string[]; // Film türleri veya kitap kategorileri (şimdilik backend tarafında kullanılmıyor)
         minPuan?: number;
         maxPuan?: number;
         yil?: number;
@@ -61,25 +61,30 @@ export const icerikService = {
         page?: number;
         limit?: number;
     }) => {
-        const response = await api.get<{ items: Icerik[]; toplam: number }>('/icerik/filtrele', { params });
+        // Default limit 50
+        const finalParams = { limit: 50, ...params };
+        const response = await api.get<Icerik[]>('/icerik/filtrele', { params: finalParams });
         return response.data;
     },
 
     // En yüksek puanlılar
     getTopRated: async (params?: { tur?: 'film' | 'kitap'; limit?: number }) => {
-        const response = await api.get<Icerik[]>('/icerik/en-yuksek-puanlilar', { params });
+        const finalParams = { limit: 50, ...params };
+        const response = await api.get<Icerik[]>('/icerik/en-yuksek-puanlilar', { params: finalParams });
         return response.data;
     },
 
     // Yeni içerikler
     getRecent: async (params?: { tur?: 'film' | 'kitap'; limit?: number }) => {
-        const response = await api.get<Icerik[]>('/icerik/yeni', { params });
+        const finalParams = { limit: 50, ...params };
+        const response = await api.get<Icerik[]>('/icerik/yeni', { params: finalParams });
         return response.data;
     },
 
     // Önerilen içerikler (login gerekli)
     getRecommended: async (params?: { limit?: number }) => {
-        const response = await api.get<Icerik[]>('/icerik/onerilenler', { params });
+        const finalParams = { limit: 50, ...params };
+        const response = await api.get<Icerik[]>('/icerik/onerilenler', { params: finalParams });
         return response.data;
     }
 };
