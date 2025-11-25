@@ -1,5 +1,17 @@
-﻿# Logs
-logs
+﻿# --- Node & Web (Frontend) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- .NET & Build (Backend) ---
+bin/
+obj/
+*.nupkg
+project.lock.json
+
+# --- Logs ---
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,50 +19,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# --- IDEs & Editors (VS, Rider, VSCode) ---
+.idea/
+.vs/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+*.user
+*.userosscache
 *.suo
+*.sln.docstates
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
-# Visual Studio
-.vs/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-
-# Build folders
-bin/
-obj/
-
-# Rider and VSCode
-.idea/
-.vscode/
-
-# Node
-node_modules/
-dist/
-
-# DotEnv
-.env
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# NuGet
-*.nupkg
-project.lock.json
