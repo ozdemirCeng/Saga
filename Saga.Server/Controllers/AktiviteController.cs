@@ -363,23 +363,7 @@ namespace Saga.Server.Controllers
                 _context.AktiviteBegenileri.Add(yeniBegeni);
                 aktivite.BegeniSayisi = aktivite.BegeniSayisi + 1;
                 
-                // Bildirim oluştur (kendi aktivitesini beğendiyse hariç)
-                if (aktivite.KullaniciId != currentUserId)
-                {
-                    var begenen = await _context.Kullanicilar.FindAsync(currentUserId);
-                    var bildirim = new Bildirim
-                    {
-                        AliciId = aktivite.KullaniciId,
-                        GonderenId = currentUserId,
-                        Tip = "aktivite_begeni",
-                        Baslik = "Yeni Beğeni",
-                        Mesaj = $"{begenen?.KullaniciAdi ?? "Birisi"} aktivitenizi beğendi",
-                        AktiviteId = id,
-                        LinkUrl = $"/aktivite/{id}",
-                        OlusturulmaZamani = DateTime.UtcNow
-                    };
-                    _context.Bildirimler.Add(bildirim);
-                }
+                // Bildirim PostgreSQL trigger ile otomatik oluşturuluyor (trg_bildirim_aktivite_begeni)
                 
                 await _context.SaveChangesAsync();
                 
@@ -474,26 +458,8 @@ namespace Saga.Server.Controllers
                 _context.AktiviteYorumlari.Add(yeniYorum);
                 aktivite.YorumSayisi = aktivite.YorumSayisi + 1;
                 
-                // Bildirimler oluştur
-                
-                // 1. Aktivite sahibine bildirim (kendi aktivitesine yorum yaptıysa hariç)
-                if (aktivite.KullaniciId != currentUserId)
-                {
-                    var bildirimAktivite = new Bildirim
-                    {
-                        AliciId = aktivite.KullaniciId,
-                        GonderenId = currentUserId,
-                        Tip = "aktivite_yorum",
-                        Baslik = "Yeni Yorum",
-                        Mesaj = $"{kullanici?.KullaniciAdi ?? "Birisi"} aktivitenize yorum yaptı: \"{dto.Icerik.Substring(0, Math.Min(50, dto.Icerik.Length))}...\"",
-                        AktiviteId = id,
-                        LinkUrl = $"/aktivite/{id}",
-                        OlusturulmaZamani = DateTime.UtcNow
-                    };
-                    _context.Bildirimler.Add(bildirimAktivite);
-                }
-                
-                // 2. Yanıt ise üst yorum sahibine bildirim (kendi yorumuna yanıt verdiyse hariç)
+                // Aktivite yorum bildirimi PostgreSQL trigger ile otomatik oluşturuluyor (trg_bildirim_aktivite_yorum)
+                // Yanıt bildirimi için üst yorum sahibine bildirim (bu trigger'da yok, manuel yapılıyor)
                 if (ustYorum != null && ustYorum.KullaniciId != currentUserId)
                 {
                     var bildirimYanit = new Bildirim
