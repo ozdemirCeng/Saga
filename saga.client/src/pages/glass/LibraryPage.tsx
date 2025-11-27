@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Eye,
   Clock,
-  XCircle,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { kutuphaneApi } from "../../services/api";

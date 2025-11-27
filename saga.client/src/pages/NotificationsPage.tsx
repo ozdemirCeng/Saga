@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCheck, Trash2, User, Heart, MessageCircle, UserPlus, List, Star, Loader2 } from 'lucide-react';
 import { bildirimApi, type Bildirim } from '../services/api';
 
+// Sidebar'daki bildirim sayısını yenilemek için global refresh fonksiyonu
+export let refreshSidebarBildirim: (() => void) | null = null;
+export const setRefreshSidebarBildirim = (fn: () => void) => { refreshSidebarBildirim = fn; };
+
 const NotificationsPage = () => {
     const navigate = useNavigate();
     const [bildirimler, setBildirimler] = useState<Bildirim[]>([]);
@@ -38,6 +42,7 @@ const NotificationsPage = () => {
         try {
             await bildirimApi.okunduIsaretle(id);
             setBildirimler(prev => prev.map(b => b.id === id ? { ...b, okundu: true } : b));
+            refreshSidebarBildirim?.();
         } catch (err) {
             console.error('Okundu işaretlenemedi:', err);
         }
@@ -47,6 +52,7 @@ const NotificationsPage = () => {
         try {
             await bildirimApi.tumunuOkunduIsaretle();
             setBildirimler(prev => prev.map(b => ({ ...b, okundu: true })));
+            refreshSidebarBildirim?.();
         } catch (err) {
             console.error('Tümü okundu işaretlenemedi:', err);
         }
@@ -56,6 +62,7 @@ const NotificationsPage = () => {
         try {
             await bildirimApi.sil(id);
             setBildirimler(prev => prev.filter(b => b.id !== id));
+            refreshSidebarBildirim?.();
         } catch (err) {
             console.error('Bildirim silinemedi:', err);
         }
@@ -66,6 +73,7 @@ const NotificationsPage = () => {
         try {
             await bildirimApi.tumunuSil();
             setBildirimler([]);
+            refreshSidebarBildirim?.();
         } catch (err) {
             console.error('Bildirimler silinemedi:', err);
         }

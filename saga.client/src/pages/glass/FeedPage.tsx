@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Loader2,
-  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -150,22 +149,6 @@ export default function FeedPage() {
 
   return (
     <div className="p-6 pb-24 lg:pb-6">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 -mx-6 px-6 py-4 bg-[rgba(10,10,18,0.8)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.06)] mb-6">
-        <div className="flex items-center justify-between max-w-[600px] mx-auto">
-          <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-            Akış
-          </h1>
-          <button 
-            onClick={handleRefresh} 
-            disabled={loading}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.6)] hover:text-white hover:border-[rgba(255,255,255,0.15)] disabled:opacity-50 transition-all"
-          >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
       <div className="max-w-[600px] mx-auto">
         {/* Filter Tabs - Nebula Style */}
         {user && (

@@ -268,6 +268,44 @@ namespace Saga.Server.Controllers
             }
         }
 
+        // DELETE: api/bildirim/duplicateleri-temizle - Veritabanındaki duplicate bildirimleri temizle
+        [HttpDelete("duplicateleri-temizle")]
+    public async Task<ActionResult<BildirimIslemSonucDto>> DuplicateBildirimleriTemizle()
+        {
+            try
+            {
+                var kullaniciId = GetCurrentUserId();
+
+                // Aynı kullanıcıya, aynı gönderenden, aynı mesaj ve tipte olan bildirimleri bul
+                var duplicateler = await _context.Bildirimler
+                    .Where(b => b.AliciId == kullaniciId && !b.Silindi)
+                    .GroupBy(b => new { b.GonderenId, b.Mesaj, b.Tip })
+                    .Where(g => g.Count() > 1)
+                    .SelectMany(g => g.OrderByDescending(b => b.OlusturulmaZamani).Skip(1)) // En yeni hariç hepsini al
+                    .ToListAsync();
+
+                if (duplicateler.Any())
+                {
+                    foreach (var bildirim in duplicateler)
+                    {
+                        bildirim.Silindi = true;
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new BildirimIslemSonucDto { Message = $"{duplicateler.Count} duplicate bildirim temizlendi" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { message = "Yetkisiz erişim" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Duplicate bildirimler temizlenirken hata oluştu");
+                return StatusCode(500, new { message = "Bildirimler temizlenirken bir hata oluştu" });
+            }
+        }
+
         // POST: api/bildirim/test (Development only - test bildirimi oluştur)
         [HttpPost("test")]
         [Authorize(Roles = "yonetici")]

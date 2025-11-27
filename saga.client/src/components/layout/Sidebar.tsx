@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -12,9 +12,14 @@ import {
   Sparkles,
   Heart,
   Bell,
+  Search,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { bildirimApi } from '../../services/api';
+import { bildirimApi, kullaniciApi } from '../../services/api';
+import type { Kullanici } from '../../services/api';
+import { setRefreshSidebarBildirim } from '../../pages/NotificationsPage';
 
 interface NavItem {
   path: string;
@@ -29,25 +34,91 @@ export function Sidebar() {
   const { user, isAuthenticated, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Kullanıcı arama state'leri
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Kullanici[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Okunmamış bildirim sayısını al
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const count = await bildirimApi.getOkunmamisSayisi();
+      setUnreadCount(count);
+    } catch (err) {
+      console.error('Bildirim sayısı alınamadı:', err);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    const fetchUnreadCount = async () => {
-      try {
-        const count = await bildirimApi.getOkunmamisSayisi();
-        setUnreadCount(count);
-      } catch (err) {
-        console.error('Bildirim sayısı alınamadı:', err);
-      }
-    };
 
     fetchUnreadCount();
     // Her 30 saniyede bir güncelle
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
+    
+    // Refresh fonksiyonunu kaydet
+    setRefreshSidebarBildirim(fetchUnreadCount);
+    
+    return () => {
+      clearInterval(interval);
+      setRefreshSidebarBildirim(() => {});
+    };
+  }, [isAuthenticated, fetchUnreadCount]);
+
+  // Kullanıcı arama - debounce ile
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const results = await kullaniciApi.ara(searchQuery.trim(), 8);
+        setSearchResults(results);
+        setShowSearchResults(true);
+      } catch (err) {
+        console.error('Kullanıcı arama hatası:', err);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Dışarı tıklanınca arama sonuçlarını kapat
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleUserClick = (kullaniciAdi: string) => {
+    navigate(`/profil/${kullaniciAdi}`);
+    setSearchQuery('');
+    setShowSearchResults(false);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowSearchResults(false);
+    searchInputRef.current?.focus();
+  };
 
   // Ana navigasyon öğeleri
   const mainNavItems: NavItem[] = [
@@ -84,7 +155,7 @@ export function Sidebar() {
     <div className="flex flex-col h-full p-5">
       {/* ===== LOGO ===== */}
       <div 
-        className="flex items-center gap-3 mb-8 cursor-pointer group"
+        className="flex items-center gap-3 mb-6 cursor-pointer group"
         onClick={() => handleNavClick('/')}
       >
         <div className="
@@ -106,7 +177,126 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* ===== KULLANICI ARAMA ===== */}
+      <div ref={searchRef} className="relative mb-6">
+        <div className="relative">
+          <Search 
+            size={16} 
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)]" 
+          />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Kullanıcı ara..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => searchQuery && setShowSearchResults(true)}
+            className="
+              w-full pl-9 pr-8 py-2.5
+              rounded-xl
+              bg-[rgba(255,255,255,0.05)]
+              border border-[rgba(255,255,255,0.08)]
+              text-white text-sm
+              placeholder:text-[rgba(255,255,255,0.35)]
+              focus:outline-none focus:border-[#6C5CE7]/50
+              focus:bg-[rgba(255,255,255,0.08)]
+              transition-all
+            "
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-white transition-colors"
+            >
+              {searchLoading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <X size={14} />
+              )}
+            </button>
+          )}
+        </div>
 
+        {/* Arama Sonuçları Dropdown */}
+        {showSearchResults && (searchResults.length > 0 || searchLoading) && (
+          <div className="
+            absolute top-full left-0 right-0 mt-2
+            bg-[rgba(20,20,35,0.98)]
+            backdrop-blur-xl
+            border border-[rgba(255,255,255,0.1)]
+            rounded-xl
+            overflow-hidden
+            shadow-xl
+            z-50
+            max-h-80 overflow-y-auto
+          ">
+            {searchLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 size={20} className="animate-spin text-[#6C5CE7]" />
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="py-2">
+                {searchResults.map((kullanici) => (
+                  <button
+                    key={kullanici.id}
+                    onClick={() => handleUserClick(kullanici.kullaniciAdi)}
+                    className="
+                      w-full px-3 py-2.5
+                      flex items-center gap-3
+                      hover:bg-[rgba(255,255,255,0.06)]
+                      transition-colors
+                    "
+                  >
+                    {/* Avatar */}
+                    <div className="
+                      w-9 h-9 rounded-full
+                      bg-gradient-to-br from-[#6C5CE7] to-[#00CEC9]
+                      flex items-center justify-center
+                      overflow-hidden
+                      flex-shrink-0
+                    ">
+                      {kullanici.avatarUrl ? (
+                        <img 
+                          src={kullanici.avatarUrl} 
+                          alt={kullanici.kullaniciAdi}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-semibold text-sm">
+                          {kullanici.kullaniciAdi?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* User Info */}
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {kullanici.goruntulemeAdi || kullanici.kullaniciAdi}
+                      </p>
+                      <p className="text-xs text-[rgba(255,255,255,0.5)] truncate">
+                        @{kullanici.kullaniciAdi}
+                      </p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-[10px] text-[rgba(255,255,255,0.4)]">
+                        {kullanici.takipEdenSayisi || 0} takipçi
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : searchQuery && !searchLoading ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-[rgba(255,255,255,0.5)]">
+                  Kullanıcı bulunamadı
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
 
       {/* ===== MAIN NAVIGATION ===== */}
       <nav className="flex-1 space-y-1">

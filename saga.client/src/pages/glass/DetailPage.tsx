@@ -21,6 +21,9 @@ import {
   ChevronUp,
   X,
   List,
+  Edit3,
+  Trash2,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { icerikApi, yorumApi, puanlamaApi, kutuphaneApi, listeApi } from '../../services/api';
@@ -174,12 +177,20 @@ interface CommentCardProps {
   yorum: Yorum;
   onLike: (yorumId: number) => void;
   onReply?: (yorumId: number) => void;
+  onEdit?: (yorumId: number, yeniIcerik: string) => void;
+  onDelete?: (yorumId: number) => void;
+  currentUserId?: string;
 }
 
-function CommentCard({ yorum, onLike, onReply }: CommentCardProps) {
+function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }: CommentCardProps) {
   const navigate = useNavigate();
   const [showSpoiler, setShowSpoiler] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(yorum.icerik || '');
+  const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const tarihStr = formatDistanceToNow(new Date(yorum.olusturulmaZamani), {
     addSuffix: true,
@@ -187,6 +198,34 @@ function CommentCard({ yorum, onLike, onReply }: CommentCardProps) {
   });
 
   const content = yorum.icerik || yorum.icerikOzet || '';
+  const isOwner = currentUserId && yorum.kullaniciId === currentUserId;
+
+  const handleEditSave = async () => {
+    if (!editContent.trim() || !onEdit) return;
+    setEditLoading(true);
+    try {
+      await onEdit(yorum.id, editContent.trim());
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Yorum güncelleme hatası:', error);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    if (!window.confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+    setDeleteLoading(true);
+    try {
+      await onDelete(yorum.id);
+    } catch (error) {
+      console.error('Yorum silme hatası:', error);
+    } finally {
+      setDeleteLoading(false);
+      setShowMenu(false);
+    }
+  };
 
   return (
     <GlassPanel padding="md" className="mb-4">
@@ -226,6 +265,48 @@ function CommentCard({ yorum, onLike, onReply }: CommentCardProps) {
           </div>
           <p className="text-xs text-[#8E8E93]">{tarihStr}</p>
         </div>
+        
+        {/* Kendi yorumu ise düzenleme/silme menüsü */}
+        {isOwner && (onEdit || onDelete) && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-[#8E8E93] hover:text-white"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-[rgba(20,20,35,0.98)] backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-xl min-w-[140px] animate-scale-in">
+                  {onEdit && (
+                    <button
+                      onClick={() => {
+                        setIsEditing(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-white hover:bg-white/10 transition-colors"
+                    >
+                      <Edit3 size={14} />
+                      Düzenle
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleteLoading}
+                      className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-[#fd79a8] hover:bg-[#fd79a8]/10 transition-colors disabled:opacity-50"
+                    >
+                      {deleteLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      Sil
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -233,8 +314,43 @@ function CommentCard({ yorum, onLike, onReply }: CommentCardProps) {
         <h4 className="font-semibold text-white mb-2">{yorum.baslik}</h4>
       )}
 
-      {/* Content */}
-      {yorum.spoilerIceriyor && !showSpoiler ? (
+      {/* Content - Düzenleme modu veya normal görünüm */}
+      {isEditing ? (
+        <div className="space-y-3">
+          <Textarea
+            placeholder="Yorumunuzu düzenleyin..."
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={3}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setIsEditing(false);
+                setEditContent(yorum.icerik || '');
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleEditSave}
+              disabled={editLoading || !editContent.trim()}
+            >
+              {editLoading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                  Kaydediliyor
+                </>
+              ) : (
+                'Kaydet'
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : yorum.spoilerIceriyor && !showSpoiler ? (
         <div
           className="p-4 rounded-xl bg-[#fd79a8]/10 border border-[#fd79a8]/20 cursor-pointer"
           onClick={() => setShowSpoiler(true)}
@@ -283,7 +399,14 @@ function CommentCard({ yorum, onLike, onReply }: CommentCardProps) {
           {showReplies && (
             <div className="mt-3 pl-4 border-l-2 border-white/10">
               {yorum.yanitlar.map((yanit) => (
-                <CommentCard key={yanit.id} yorum={yanit} onLike={onLike} />
+                <CommentCard 
+                  key={yanit.id} 
+                  yorum={yanit} 
+                  onLike={onLike}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  currentUserId={currentUserId}
+                />
               ))}
             </div>
           )}
@@ -641,7 +764,7 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
 export default function DetailPage() {
   const { id } = useParams<{ tip: string; id: string }>();
   const navigate = useNavigate();
-  const { requireAuth } = useAuth();
+  const { user, requireAuth } = useAuth();
 
   // States
   const [icerik, setIcerik] = useState<Icerik | null>(null);
@@ -754,6 +877,32 @@ export default function DetailPage() {
       );
     } catch (err) {
       console.error('Beğeni hatası:', err);
+    }
+  };
+
+  // Yorum düzenleme
+  const handleEditComment = async (yorumId: number, yeniIcerik: string) => {
+    try {
+      await yorumApi.update(yorumId, { icerik: yeniIcerik });
+      setYorumlar((prev) =>
+        prev.map((y) =>
+          y.id === yorumId ? { ...y, icerik: yeniIcerik } : y
+        )
+      );
+    } catch (err) {
+      console.error('Yorum güncelleme hatası:', err);
+      throw err;
+    }
+  };
+
+  // Yorum silme
+  const handleDeleteComment = async (yorumId: number) => {
+    try {
+      await yorumApi.delete(yorumId);
+      setYorumlar((prev) => prev.filter((y) => y.id !== yorumId));
+    } catch (err) {
+      console.error('Yorum silme hatası:', err);
+      throw err;
     }
   };
 
@@ -1037,6 +1186,9 @@ export default function DetailPage() {
                 key={yorum.id}
                 yorum={yorum}
                 onLike={handleLikeComment}
+                onEdit={handleEditComment}
+                onDelete={handleDeleteComment}
+                currentUserId={user?.id}
               />
             ))}
           </div>

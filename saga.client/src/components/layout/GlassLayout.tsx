@@ -28,50 +28,46 @@ export function GlassLayout() {
       }}
     >
       {/* 3-Column Nebula Layout - Responsive */}
-      <div className={`
-        min-h-screen
-        max-w-[1600px] mx-auto
+      <div className="min-h-screen">
         
-        ${isFullWidthPage 
-          ? 'flex' 
-          : 'lg:grid lg:grid-cols-[260px_1fr_340px] xl:grid-cols-[280px_1fr_360px]'
-        }
-      `}>
-        
-        {/* LEFT SIDEBAR - Hidden on mobile, visible on lg+ */}
-        <aside className={`
+        {/* LEFT SIDEBAR - Fixed on left, hidden on mobile */}
+        <aside className="
           hidden lg:block
-          ${isFullWidthPage ? 'fixed left-0 top-0 bottom-0 w-[260px] xl:w-[280px] z-40' : 'sticky top-0 h-screen'}
+          fixed left-0 top-0 bottom-0 
+          w-[260px] xl:w-[280px]
+          z-40
           border-r border-[rgba(255,255,255,0.06)]
           bg-[rgba(10,10,18,0.5)]
           backdrop-blur-xl
           overflow-y-auto
           hide-scrollbar
-        `}>
+        ">
           <Sidebar />
         </aside>
 
         {/* MAIN CONTENT - Feed Area */}
         <main className={`
-          ${isFullWidthPage 
-            ? 'flex-1 lg:ml-[260px] xl:ml-[280px] min-h-screen' 
-            : 'min-h-screen lg:border-r lg:border-[rgba(255,255,255,0.06)]'
-          }
+          min-h-screen
+          lg:ml-[260px] xl:ml-[280px]
+          ${!isFullWidthPage ? 'xl:mr-[360px]' : ''}
           overflow-y-auto
           pb-20 lg:pb-0
+          pt-6 lg:pt-8
         `}>
           <Outlet />
         </main>
 
-        {/* RIGHT WIDGETS - Only show on xl screens and non-fullwidth pages */}
+        {/* RIGHT WIDGETS - Fixed on right, only on non-fullwidth pages */}
         {!isFullWidthPage && (
           <aside className="
-            sticky top-0 h-screen
+            fixed right-0 top-0 bottom-0
+            w-[340px] xl:w-[360px]
             bg-[rgba(10,10,18,0.3)]
             backdrop-blur-xl
             overflow-y-auto
             hide-scrollbar
             hidden xl:block
+            border-l border-[rgba(255,255,255,0.06)]
           ">
             <RightWidgets />
           </aside>

@@ -218,23 +218,30 @@ export function ActivityCard({ aktivite, isLoggedIn, showUserInfo = true, isOwnP
     </div>
   );
 
-  const renderYorumContent = () => (
-    <div className="space-y-3">
-      <div className="flex gap-4 p-4 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] cursor-pointer hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(108,92,231,0.3)] transition-all" onClick={handleContentClick}>
-        {veri?.posterUrl && <img src={veri.posterUrl} alt={veri.baslik} className="w-20 h-28 rounded-lg object-cover flex-shrink-0" />}
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-white line-clamp-2">{veri?.baslik}</h4>
-          <div className="flex items-center gap-2 mt-1">{getTurIcon(veri?.tur)}<span className="text-xs text-[rgba(255,255,255,0.5)] capitalize">{veri?.tur}</span></div>
+  const renderYorumContent = () => {
+    const yorumMetni = veri?.yorumOzet || '';
+    const isLongComment = yorumMetni.length > 100;
+    
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-4 p-4 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] cursor-pointer hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(108,92,231,0.3)] transition-all" onClick={handleContentClick}>
+          {veri?.posterUrl && <img src={veri.posterUrl} alt={veri.baslik} className="w-20 h-28 rounded-lg object-cover flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-white line-clamp-2">{veri?.baslik}</h4>
+            <div className="flex items-center gap-2 mt-1">{getTurIcon(veri?.tur)}<span className="text-xs text-[rgba(255,255,255,0.5)] capitalize">{veri?.tur}</span></div>
+          </div>
         </div>
+        {yorumMetni && (
+          <div className="p-4 rounded-xl bg-[rgba(108,92,231,0.1)] border-l-2 border-[#6C5CE7]">
+            <p className="text-[rgba(255,255,255,0.85)] text-sm italic line-clamp-3">"{yorumMetni}"</p>
+            {isLongComment && (
+              <button onClick={handleContentClick} className="mt-2 text-xs text-[#6C5CE7] hover:text-[#00CEC9] transition-colors">...daha fazlasını oku</button>
+            )}
+          </div>
+        )}
       </div>
-      {veri?.yorumOzet && (
-        <div className="p-4 rounded-xl bg-[rgba(108,92,231,0.1)] border-l-2 border-[#6C5CE7]">
-          <p className="text-[rgba(255,255,255,0.85)] text-sm italic line-clamp-3">"{veri.yorumOzet}"</p>
-          <button onClick={handleContentClick} className="mt-2 text-xs text-[#6C5CE7] hover:text-[#00CEC9] transition-colors">...daha fazlasını oku</button>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderDurumContent = () => {
     const durumConfig: Record<string, { color: string; bg: string }> = {
