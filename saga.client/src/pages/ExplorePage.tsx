@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Title,
@@ -24,10 +24,10 @@ import {
   Tooltip,
   Center,
 } from '@mantine/core';
-import { IconSearch, IconFilter, IconX, IconStar, IconTrendingUp, IconArrowRight, IconFlame, IconLoader } from '@tabler/icons-react';
+import { IconSearch, IconFilter, IconX, IconStar, IconTrendingUp, IconArrowRight, IconFlame } from '@tabler/icons-react';
 import { usePopularContent, useTopRatedContent } from '../hooks/useIcerikler';
 import { useNavigate } from 'react-router';
-import { useDebouncedValue } from '@mantine/hooks';
+import { useDebouncedValue, useIntersection } from '@mantine/hooks';
 import { ContentCardSkeleton } from '../components/ContentCardSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
@@ -223,6 +223,13 @@ export default function ExplorePage() {
   // Kitaplar için sıralama
   const [bookSort, setBookSort] = useState<'relevance' | 'newest'>('relevance');
 
+  // Infinite scroll için intersection observer
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { ref: loadMoreRef, entry } = useIntersection({
+    root: containerRef.current,
+    threshold: 0.5,
+  });
+
   // Debug log
   console.log('🏠 ExplorePage render - activeTab:', activeTab);
 
@@ -235,8 +242,8 @@ export default function ExplorePage() {
   const [minYil, setMinYil] = useState<number | undefined>(undefined);
   const [maxYil, setMaxYil] = useState<number | undefined>(undefined);
 
-  // Sayfalama için limit
-  const PAGE_LIMIT = 20;
+  // Sayfalama için limit - Sayfayı dolduracak kadar
+  const PAGE_LIMIT = 50;
 
   // Import mutations
   const importTmdbMutation = useMutation({
@@ -316,27 +323,36 @@ export default function ExplorePage() {
     fetchNextPage: fetchNextDatabase,
     hasNextPage: hasNextDatabase,
     isFetchingNextPage: isFetchingNextDatabase,
+    error: databaseError,
   } = useInfiniteQuery({
     queryKey: ['icerikler', 'explore', { isSearching, debouncedQuery, tur, turler, minPuan, maxPuan, minYil, maxYil }],
     queryFn: async ({ pageParam = 1 }) => {
-      if (isSearching) {
-        return icerikService.searchPaginated(debouncedQuery, { sayfa: pageParam, limit: PAGE_LIMIT });
-      } else {
-        return icerikService.filterPaginated({
-          tur,
-          turler: turler.length > 0 ? turler : undefined,
-          minPuan,
-          maxPuan,
-          minYil,
-          maxYil,
-          sayfa: pageParam,
-          limit: PAGE_LIMIT,
-        });
+      console.log('🔄 API çağrısı yapılıyor - sayfa:', pageParam, 'limit:', PAGE_LIMIT);
+      try {
+        if (isSearching) {
+          const result = await icerikService.searchPaginated(debouncedQuery, { sayfa: pageParam, limit: PAGE_LIMIT });
+          console.log('✅ Arama sonucu:', result);
+          return result;
+        } else {
+          const result = await icerikService.filterPaginated({
+            tur,
+            turler: turler.length > 0 ? turler : undefined,
+            minPuan,
+            maxPuan,
+            minYil,
+            maxYil,
+            sayfa: pageParam,
+            limit: PAGE_LIMIT,
+          });
+          console.log('✅ Filtre sonucu:', result);
+          return result;
+        }
+      } catch (error) {
+        console.error('❌ API hatası:', error);
+        throw error;
       }
     },
     getNextPageParam: (lastPage, pages) => {
-      console.log('getNextPageParam - lastPage.toplamSayfa:', lastPage.toplamSayfa, 'pages.length:', pages.length);
-      console.log('hasMore:', pages.length < lastPage.toplamSayfa);
       if (pages.length < lastPage.toplamSayfa) {
         return pages.length + 1;
       }
@@ -346,6 +362,14 @@ export default function ExplorePage() {
     enabled: activeTab === 'database',
     staleTime: 30000,
   });
+
+  // Infinite scroll - sayfa sonuna gelince otomatik yükle
+  useEffect(() => {
+    if (entry?.isIntersecting && hasNextDatabase && !isFetchingNextDatabase && activeTab === 'database') {
+      console.log('🔄 Infinite scroll triggered - loading more...');
+      fetchNextDatabase();
+    }
+  }, [entry?.isIntersecting, hasNextDatabase, isFetchingNextDatabase, fetchNextDatabase, activeTab]);
 
   // Query hooks - External APIs
   const { data: tmdbResults, isLoading: tmdbLoading } = useQuery({
@@ -383,6 +407,14 @@ export default function ExplorePage() {
     displayResults = databaseData?.pages.flatMap(page => page.data) ?? [];
     isContentLoading = databaseLoading;
     toplamKayit = databaseData?.pages[0]?.toplamKayit ?? 0;
+    
+    // Debug
+    console.log('📊 Database tab - databaseData:', databaseData);
+    console.log('📊 displayResults count:', displayResults.length);
+    console.log('📊 toplamKayit:', toplamKayit);
+    console.log('📊 hasNextDatabase:', hasNextDatabase);
+    console.log('📊 databaseLoading:', databaseLoading);
+    console.log('📊 databaseError:', databaseError);
   } else if (activeTab === 'tmdb') {
     displayResults = (tmdbResults ?? []).map(film => ({
       id: film.id,
@@ -600,6 +632,11 @@ export default function ExplorePage() {
           <VitrinModulleri navigate={navigate} />
         )}
 
+        {/* Tüm İçerikler Başlığı - database tab için */}
+        {activeTab === 'database' && (
+          <Title order={3} mt="lg">Tüm İçerikler</Title>
+        )}
+
         {/* Sonuçlar */}
         {isContentLoading ? (
           <Grid>
@@ -712,19 +749,20 @@ export default function ExplorePage() {
               ))}
             </Grid>
             
-            {/* Daha Fazla Yükle Butonu - Database tab için */}
-            {activeTab === 'database' && hasNextDatabase && (
-              <Center py="xl">
-                <Button
-                  variant="light"
-                  size="md"
-                  onClick={() => fetchNextDatabase()}
-                  loading={isFetchingNextDatabase}
-                  leftSection={!isFetchingNextDatabase && <IconLoader size={16} />}
-                >
-                  {isFetchingNextDatabase ? 'Yükleniyor...' : 'Daha Fazla Yükle'}
-                </Button>
-              </Center>
+            {/* Infinite scroll trigger - sayfa sonuna gelince otomatik yükler */}
+            {activeTab === 'database' && (
+              <div ref={loadMoreRef} style={{ height: 20, marginTop: 20 }}>
+                {isFetchingNextDatabase && (
+                  <Center>
+                    <Loader size="md" />
+                  </Center>
+                )}
+                {hasNextDatabase && !isFetchingNextDatabase && (
+                  <Center>
+                    <Text c="dimmed" size="sm">Daha fazla içerik için aşağı kaydırın...</Text>
+                  </Center>
+                )}
+              </div>
             )}
           </>
         ) : (isSearching || hasFilters) ? (

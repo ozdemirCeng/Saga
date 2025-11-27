@@ -8,16 +8,12 @@ import {
   User,
   Settings,
   LogOut,
-  PlusCircle,
   ChevronDown,
   Sparkles,
-  TrendingUp,
-  Clock,
   Heart,
   Bell,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { CreateModal } from '../modals/CreateModal';
 import { bildirimApi } from '../../services/api';
 
 interface NavItem {
@@ -32,7 +28,6 @@ export function Sidebar() {
   const location = useLocation();
   const { user, isAuthenticated, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Okunmamış bildirim sayısını al
@@ -67,13 +62,6 @@ export function Sidebar() {
     { path: '/begeniler', icon: Heart, label: 'Beğeniler' },
     { path: '/bildirimler', icon: Bell, label: 'Bildirimler', badge: unreadCount },
   ] : [];
-
-  // Keşfet kategorileri
-  const discoverItems: NavItem[] = [
-    { path: '/kesfet?tab=trending', icon: TrendingUp, label: 'Trend' },
-    { path: '/kesfet?tab=new', icon: Clock, label: 'Yeni Çıkanlar' },
-    { path: '/kesfet?tab=top', icon: Sparkles, label: 'En İyiler' },
-  ];
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -118,30 +106,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* ===== CREATE NEW BUTTON ===== */}
-      {isAuthenticated && (
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="
-            w-full mb-6 py-3 px-4
-            rounded-xl
-            bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9]
-            text-white font-semibold text-sm
-            flex items-center justify-center gap-2
-            shadow-lg shadow-[#6C5CE7]/20
-            hover:shadow-[#6C5CE7]/40
-            hover:scale-[1.02]
-            active:scale-[0.98]
-            transition-all duration-200
-          "
-        >
-          <PlusCircle size={18} />
-          Yeni Oluştur
-        </button>
-      )}
 
-      {/* Create Modal */}
-      <CreateModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
 
       {/* ===== MAIN NAVIGATION ===== */}
       <nav className="flex-1 space-y-1">
@@ -176,21 +141,6 @@ export function Sidebar() {
             ))}
           </div>
         )}
-
-        {/* Keşfet Kategorileri */}
-        <div className="mb-6">
-          <p className="text-[10px] text-[rgba(255,255,255,0.3)] uppercase tracking-widest mb-3 px-3">
-            Keşfet
-          </p>
-          {discoverItems.map((item) => (
-            <NavButton
-              key={item.path}
-              item={item}
-              isActive={isActive(item.path)}
-              onClick={() => handleNavClick(item.path)}
-            />
-          ))}
-        </div>
       </nav>
 
       {/* ===== USER PROFILE CARD (Bottom) ===== */}

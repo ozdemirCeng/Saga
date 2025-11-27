@@ -114,22 +114,15 @@ export const icerikService = {
         sayfa?: number;
         limit?: number;
     }): Promise<PaginatedResponse<Icerik>> => {
-        const finalParams = { limit: 20, sayfa: 1, ...params };
+        const finalParams = { limit: 50, sayfa: 1, ...params };
         const response = await api.get<Icerik[]>('/icerik/filtrele', { params: finalParams });
-        
-        // Debug: Tüm header'ları konsola yazdır
-        console.log('filterPaginated ALL headers:', JSON.stringify(response.headers));
         
         // Axios header'ları lowercase yapar
         const toplamSayfaStr = response.headers['x-toplam-sayfa'];
         const toplamKayitStr = response.headers['x-toplam-kayit'];
         
-        console.log('Raw header values - x-toplam-sayfa:', toplamSayfaStr, 'x-toplam-kayit:', toplamKayitStr);
-        
         const toplamSayfa = parseInt(toplamSayfaStr || '1', 10);
         const toplamKayit = parseInt(toplamKayitStr || '0', 10);
-        
-        console.log('Parsed values - toplamSayfa:', toplamSayfa, 'toplamKayit:', toplamKayit, 'mevcutSayfa:', finalParams.sayfa);
         
         return {
             data: response.data,
@@ -141,7 +134,7 @@ export const icerikService = {
 
     // Arama - sayfalama desteği ile
     searchPaginated: async (query: string, params?: { sayfa?: number; limit?: number }): Promise<PaginatedResponse<Icerik>> => {
-        const finalParams = { limit: 20, sayfa: 1, ...params };
+        const finalParams = { limit: 50, sayfa: 1, ...params };
         const response = await api.get<Icerik[]>('/icerik/ara', {
             params: { q: query, ...finalParams }
         });

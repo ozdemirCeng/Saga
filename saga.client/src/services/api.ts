@@ -274,6 +274,8 @@ export interface TmdbFilm {
     puan?: number;
     oySayisi?: number;
     mediaType?: 'movie' | 'tv'; // Film mi dizi mi
+    turIds?: number[]; // Tür ID'leri (TMDB genre IDs)
+    turler?: string[]; // Tür adları
     // Alternatif alanlar (uyumluluk için)
     title?: string;
     overview?: string;

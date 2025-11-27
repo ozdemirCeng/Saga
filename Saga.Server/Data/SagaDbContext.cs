@@ -32,6 +32,10 @@ namespace Saga.Server.Data
         public DbSet<KullaniciAyarlari> KullaniciAyarlari { get; set; }
         public DbSet<Engellenen> Engellenenler { get; set; }
         public DbSet<IcerikFavori> IcerikFavorileri { get; set; }
+        
+        // Oyuncu tabloları
+        public DbSet<Oyuncu> Oyuncular { get; set; }
+        public DbSet<IcerikOyuncu> IcerikOyunculari { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -171,6 +175,24 @@ namespace Saga.Server.Data
                 .HasOne(ayb => ayb.Kullanici)
                 .WithMany()
                 .HasForeignKey(ayb => ayb.KullaniciId);
+            
+            // İçerik Oyuncu ilişkileri
+            modelBuilder.Entity<IcerikOyuncu>()
+                .HasOne(io => io.Icerik)
+                .WithMany(i => i.IcerikOyunculari)
+                .HasForeignKey(io => io.IcerikId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<IcerikOyuncu>()
+                .HasOne(io => io.Oyuncu)
+                .WithMany(o => o.IcerikOyunculari)
+                .HasForeignKey(io => io.OyuncuId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Oyuncu için unique constraint (harici_id)
+            modelBuilder.Entity<Oyuncu>()
+                .HasIndex(o => o.HariciId)
+                .IsUnique();
         }
     }
 }

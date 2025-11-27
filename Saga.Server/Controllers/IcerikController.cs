@@ -40,6 +40,26 @@ namespace Saga.Server.Controllers
             var yorumSayisi = await _context.Yorumlar.CountAsync(y => y.IcerikId == id && !y.Silindi);
             var listeyeEklenmeSayisi = await _context.ListeIcerikleri.CountAsync(li => li.IcerikId == id);
 
+            // Oyuncuları tablodan çek
+            var oyuncular = await _context.IcerikOyunculari
+                .Include(io => io.Oyuncu)
+                .Where(io => io.IcerikId == id)
+                .OrderBy(io => io.Sira)
+                .Select(io => new OyuncuInfoDto
+                {
+                    Id = io.Oyuncu.Id,
+                    HariciId = io.Oyuncu.HariciId,
+                    Ad = io.Oyuncu.Ad,
+                    Karakter = io.Karakter,
+                    ProfilUrl = io.Oyuncu.ProfilUrl,
+                    RolTipi = io.RolTipi
+                })
+                .ToListAsync();
+
+            // Yönetmeni bul (RolTipi = yonetmen)
+            var yonetmenler = oyuncular.Where(o => o.RolTipi == "yonetmen").ToList();
+            var oyuncuListesi = oyuncular.Where(o => o.RolTipi == "oyuncu").ToList();
+
             // Kullanıcının puanı ve durumu
             decimal? kullaniciPuani = null;
             string? kullanicininDurumu = null;
@@ -79,10 +99,12 @@ namespace Saga.Server.Controllers
                 PopulerlikSkoru = icerik.PopulerlikSkoru,
                 OlusturulmaZamani = icerik.OlusturulmaZamani,
                 KullaniciPuani = kullaniciPuani,
-                KullanicininDurumu = kullanicininDurumu
+                KullanicininDurumu = kullanicininDurumu,
+                Oyuncular = oyuncuListesi.Any() ? oyuncuListesi : null,
+                Yonetmen = yonetmenler.FirstOrDefault()?.Ad
             };
 
-            // Meta veriyi parse et
+            // Meta veriyi parse et (türler, süre vs. için)
             if (!string.IsNullOrEmpty(icerik.MetaVeri) && icerik.MetaVeri != "{}")
             {
                 try
@@ -90,16 +112,19 @@ namespace Saga.Server.Controllers
                     var metaDoc = JsonDocument.Parse(icerik.MetaVeri);
                     var root = metaDoc.RootElement;
 
-                    // Film/Dizi meta verileri
-                    if (root.TryGetProperty("yonetmen", out var yonetmen) && yonetmen.ValueKind != JsonValueKind.Null)
+                    // Eğer tablodan yönetmen bulunamadıysa, meta veriden al
+                    if (string.IsNullOrEmpty(response.Yonetmen) && 
+                        root.TryGetProperty("yonetmen", out var yonetmen) && yonetmen.ValueKind != JsonValueKind.Null)
                     {
                         response.Yonetmen = yonetmen.GetString();
                     }
 
-                    if (root.TryGetProperty("oyuncular", out var oyuncular) && oyuncular.ValueKind == JsonValueKind.Array)
+                    // Eğer tablodan oyuncu bulunamadıysa, meta veriden al (eski veriler için)
+                    if ((response.Oyuncular == null || !response.Oyuncular.Any()) &&
+                        root.TryGetProperty("oyuncular", out var oyuncularJson) && oyuncularJson.ValueKind == JsonValueKind.Array)
                     {
                         response.Oyuncular = new List<OyuncuInfoDto>();
-                        foreach (var oyuncu in oyuncular.EnumerateArray())
+                        foreach (var oyuncu in oyuncularJson.EnumerateArray())
                         {
                             response.Oyuncular.Add(new OyuncuInfoDto
                             {
@@ -305,7 +330,7 @@ namespace Saga.Server.Controllers
             [FromQuery] decimal? minPuan = null,
             [FromQuery] decimal? maxPuan = null,
             [FromQuery] int sayfa = 1,
-            [FromQuery] int limit = 20)
+            [FromQuery] int limit = 50)
         {
             var query = _context.Icerikler.AsNoTracking();
 

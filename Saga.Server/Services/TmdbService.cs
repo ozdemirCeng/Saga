@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Saga.Server.Data;
 using Saga.Server.Models;
 using System.Net.Http.Json;
@@ -363,7 +364,6 @@ namespace Saga.Server.Services
                 var metaVeri = new
                 {
                     yonetmen = filmDto.Yonetmen,
-                    oyuncular = filmDto.Oyuncular?.Select(o => new { ad = o.Ad, karakter = o.Karakter, profilUrl = o.ProfilUrl }),
                     turler = filmDto.Turler,
                     sure = filmDto.Sure,
                     mediaType = filmDto.MediaType
@@ -387,6 +387,12 @@ namespace Saga.Server.Services
 
                 _context.Icerikler.Add(icerik);
                 await _context.SaveChangesAsync();
+
+                // Oyuncuları ayrı tabloya kaydet
+                if (filmDto.Oyuncular != null && filmDto.Oyuncular.Count > 0)
+                {
+                    await SaveActorsAsync(icerik.Id, filmDto.Oyuncular, filmDto.Yonetmen);
+                }
 
                 _logger.LogInformation("Film başarıyla import edildi: {Title} (TMDB ID: {TmdbId})", icerik.Baslik, tmdbId);
                 return icerik;
@@ -424,7 +430,6 @@ namespace Saga.Server.Services
                 var metaVeri = new
                 {
                     yonetmen = tvDto.Yonetmen,
-                    oyuncular = tvDto.Oyuncular?.Select(o => new { ad = o.Ad, karakter = o.Karakter, profilUrl = o.ProfilUrl }),
                     turler = tvDto.Turler,
                     sezonSayisi = tvDto.SezonSayisi,
                     bolumSayisi = tvDto.BolumSayisi,
@@ -449,6 +454,12 @@ namespace Saga.Server.Services
 
                 _context.Icerikler.Add(icerik);
                 await _context.SaveChangesAsync();
+
+                // Oyuncuları ayrı tabloya kaydet
+                if (tvDto.Oyuncular != null && tvDto.Oyuncular.Count > 0)
+                {
+                    await SaveActorsAsync(icerik.Id, tvDto.Oyuncular, tvDto.Yonetmen);
+                }
 
                 _logger.LogInformation("Dizi başarıyla import edildi: {Title} (TMDB ID: {TmdbId})", icerik.Baslik, tmdbId);
                 return icerik;
@@ -518,21 +529,23 @@ namespace Saga.Server.Services
             // Credits bilgilerini parse et
             if (movieData.TryGetProperty("credits", out var credits))
             {
-                // Oyuncular (ilk 10)
+                // Oyuncular (ilk 15)
                 if (credits.TryGetProperty("cast", out var cast))
                 {
                     dto.Oyuncular = new List<OyuncuDto>();
                     int actorCount = 0;
                     foreach (var actor in cast.EnumerateArray())
                     {
-                        if (actorCount >= 10) break;
+                        if (actorCount >= 15) break;
                         dto.Oyuncular.Add(new OyuncuDto
                         {
+                            HariciId = actor.TryGetProperty("id", out var actorId) ? actorId.GetInt32().ToString() : null,
                             Ad = actor.TryGetProperty("name", out var actorName) ? actorName.GetString() ?? "" : "",
                             Karakter = actor.TryGetProperty("character", out var character) ? character.GetString() : null,
                             ProfilUrl = actor.TryGetProperty("profile_path", out var profile) && !profile.ValueEquals("null")
                                 ? "https://image.tmdb.org/t/p/w185" + profile.GetString()
-                                : null
+                                : null,
+                            Sira = actorCount
                         });
                         actorCount++;
                     }
@@ -614,21 +627,23 @@ namespace Saga.Server.Services
             // Credits bilgilerini parse et
             if (tvData.TryGetProperty("credits", out var credits))
             {
-                // Oyuncular (ilk 10)
+                // Oyuncular (ilk 15)
                 if (credits.TryGetProperty("cast", out var cast))
                 {
                     dto.Oyuncular = new List<OyuncuDto>();
                     int actorCount = 0;
                     foreach (var actor in cast.EnumerateArray())
                     {
-                        if (actorCount >= 10) break;
+                        if (actorCount >= 15) break;
                         dto.Oyuncular.Add(new OyuncuDto
                         {
+                            HariciId = actor.TryGetProperty("id", out var actorId) ? actorId.GetInt32().ToString() : null,
                             Ad = actor.TryGetProperty("name", out var actorName) ? actorName.GetString() ?? "" : "",
                             Karakter = actor.TryGetProperty("character", out var character) ? character.GetString() : null,
                             ProfilUrl = actor.TryGetProperty("profile_path", out var profile) && !profile.ValueEquals("null")
                                 ? "https://image.tmdb.org/t/p/w185" + profile.GetString()
-                                : null
+                                : null,
+                            Sira = actorCount
                         });
                         actorCount++;
                     }
@@ -656,6 +671,13 @@ namespace Saga.Server.Services
             {
                 foreach (var movie in resultsArray.EnumerateArray())
                 {
+                    // Genre IDs parse
+                    List<int>? genreIds = null;
+                    if (movie.TryGetProperty("genre_ids", out var genreIdsArray))
+                    {
+                        genreIds = genreIdsArray.EnumerateArray().Select(g => g.GetInt32()).ToList();
+                    }
+
                     results.Add(new TmdbFilmDto
                     {
                         Id = movie.GetProperty("id").GetInt32().ToString(),
@@ -667,6 +689,7 @@ namespace Saga.Server.Services
                         YayinTarihi = movie.TryGetProperty("release_date", out var date) ? date.GetString() : null,
                         Puan = movie.TryGetProperty("vote_average", out var avg) ? avg.GetDouble() : 0,
                         OySayisi = movie.TryGetProperty("vote_count", out var count) ? count.GetInt32() : 0,
+                        TurIds = genreIds,
                         MediaType = mediaType
                     });
                 }
@@ -683,6 +706,13 @@ namespace Saga.Server.Services
             {
                 foreach (var tv in resultsArray.EnumerateArray())
                 {
+                    // Genre IDs parse
+                    List<int>? genreIds = null;
+                    if (tv.TryGetProperty("genre_ids", out var genreIdsArray))
+                    {
+                        genreIds = genreIdsArray.EnumerateArray().Select(g => g.GetInt32()).ToList();
+                    }
+
                     results.Add(new TmdbFilmDto
                     {
                         Id = tv.GetProperty("id").GetInt32().ToString(),
@@ -694,6 +724,7 @@ namespace Saga.Server.Services
                         YayinTarihi = tv.TryGetProperty("first_air_date", out var date) ? date.GetString() : null,
                         Puan = tv.TryGetProperty("vote_average", out var avg) ? avg.GetDouble() : 0,
                         OySayisi = tv.TryGetProperty("vote_count", out var count) ? count.GetInt32() : 0,
+                        TurIds = genreIds,
                         MediaType = "tv"
                     });
                 }
@@ -716,6 +747,13 @@ namespace Saga.Server.Services
                     if (mediaType == "person") continue;
 
                     var isMovie = mediaType == "movie";
+
+                    // Genre IDs parse
+                    List<int>? genreIds = null;
+                    if (item.TryGetProperty("genre_ids", out var genreIdsArray))
+                    {
+                        genreIds = genreIdsArray.EnumerateArray().Select(g => g.GetInt32()).ToList();
+                    }
                     
                     results.Add(new TmdbFilmDto
                     {
@@ -732,6 +770,7 @@ namespace Saga.Server.Services
                             : (item.TryGetProperty("first_air_date", out var airDate) ? airDate.GetString() : null),
                         Puan = item.TryGetProperty("vote_average", out var avg) ? avg.GetDouble() : 0,
                         OySayisi = item.TryGetProperty("vote_count", out var count) ? count.GetInt32() : 0,
+                        TurIds = genreIds,
                         MediaType = mediaType ?? "movie"
                     });
                 }
@@ -749,6 +788,109 @@ namespace Saga.Server.Services
                 return date;
 
             return null;
+        }
+
+        /// <summary>
+        /// Oyuncuları ve yönetmeni ayrı tablolara kaydeder
+        /// </summary>
+        private async Task SaveActorsAsync(long icerikId, List<OyuncuDto> oyuncular, string? yonetmen)
+        {
+            try
+            {
+                foreach (var oyuncuDto in oyuncular)
+                {
+                    if (string.IsNullOrEmpty(oyuncuDto.HariciId) || oyuncuDto.HariciId == "0") continue;
+
+                    // Oyuncu zaten var mı kontrol et (HariciId ile)
+                    var mevcutOyuncu = await _context.Oyuncular
+                        .FirstOrDefaultAsync(o => o.HariciId == oyuncuDto.HariciId);
+
+                    Oyuncu oyuncu;
+                    if (mevcutOyuncu != null)
+                    {
+                        oyuncu = mevcutOyuncu;
+                    }
+                    else
+                    {
+                        // Yeni oyuncu oluştur
+                        oyuncu = new Oyuncu
+                        {
+                            HariciId = oyuncuDto.HariciId,
+                            Ad = oyuncuDto.Ad,
+                            ProfilUrl = oyuncuDto.ProfilUrl
+                        };
+                        _context.Oyuncular.Add(oyuncu);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // İçerik-oyuncu ilişkisi zaten var mı kontrol et
+                    var mevcutIliski = await _context.IcerikOyunculari
+                        .FirstOrDefaultAsync(io => io.IcerikId == icerikId && io.OyuncuId == oyuncu.Id);
+
+                    if (mevcutIliski == null)
+                    {
+                        // İlişki oluştur
+                        var icerikOyuncu = new IcerikOyuncu
+                        {
+                            IcerikId = icerikId,
+                            OyuncuId = oyuncu.Id,
+                            Karakter = oyuncuDto.Karakter,
+                            Sira = oyuncuDto.Sira,
+                            RolTipi = "oyuncu"
+                        };
+                        _context.IcerikOyunculari.Add(icerikOyuncu);
+                    }
+                }
+
+                // Yönetmeni de kaydet (eğer varsa)
+                if (!string.IsNullOrWhiteSpace(yonetmen))
+                {
+                    // Yönetmen için basit bir oyuncu kaydı oluştur (HariciId = null, sadece isim)
+                    var mevcutYonetmen = await _context.Oyuncular
+                        .FirstOrDefaultAsync(o => o.Ad == yonetmen && o.HariciId == null);
+
+                    Oyuncu yonetmenOyuncu;
+                    if (mevcutYonetmen != null)
+                    {
+                        yonetmenOyuncu = mevcutYonetmen;
+                    }
+                    else
+                    {
+                        yonetmenOyuncu = new Oyuncu
+                        {
+                            HariciId = null,
+                            Ad = yonetmen,
+                            ProfilUrl = null
+                        };
+                        _context.Oyuncular.Add(yonetmenOyuncu);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // İlişki var mı kontrol et
+                    var mevcutYonetmenIliski = await _context.IcerikOyunculari
+                        .FirstOrDefaultAsync(io => io.IcerikId == icerikId && io.OyuncuId == yonetmenOyuncu.Id);
+
+                    if (mevcutYonetmenIliski == null)
+                    {
+                        var icerikYonetmen = new IcerikOyuncu
+                        {
+                            IcerikId = icerikId,
+                            OyuncuId = yonetmenOyuncu.Id,
+                            Karakter = null,
+                            Sira = 0,
+                            RolTipi = "yonetmen"
+                        };
+                        _context.IcerikOyunculari.Add(icerikYonetmen);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("İçerik {IcerikId} için {Count} oyuncu kaydedildi", icerikId, oyuncular.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Oyuncular kaydedilirken hata: İçerik {IcerikId}", icerikId);
+            }
         }
     }
 }

@@ -59,12 +59,41 @@ namespace Saga.Server.DTOs
         public List<string>? Kategoriler { get; set; }
     }
     
-    // Oyuncu bilgisi DTO
+    // Oyuncu bilgisi DTO (içerik detayında kullanılır)
     public class OyuncuInfoDto
     {
+        public long? Id { get; set; } // Veritabanındaki ID (varsa)
+        public string? HariciId { get; set; } // TMDB person ID
         public string Ad { get; set; } = null!;
         public string? Karakter { get; set; }
         public string? ProfilUrl { get; set; }
+        public string? RolTipi { get; set; } // oyuncu, yonetmen, yapimci, senarist
+    }
+    
+    // Oyuncu detay DTO (oyuncu sayfası için)
+    public class OyuncuDetailDto
+    {
+        public long Id { get; set; }
+        public string? HariciId { get; set; }
+        public string Ad { get; set; } = null!;
+        public string? ProfilUrl { get; set; }
+        public string? Biyografi { get; set; }
+        public DateOnly? DogumTarihi { get; set; }
+        public string? DogumYeri { get; set; }
+        public int? Cinsiyet { get; set; }
+        public List<OyuncuFilmografiDto>? Filmografi { get; set; }
+    }
+    
+    // Oyuncunun filmografisi için DTO
+    public class OyuncuFilmografiDto
+    {
+        public long IcerikId { get; set; }
+        public string Baslik { get; set; } = null!;
+        public string? PosterUrl { get; set; }
+        public string? Karakter { get; set; }
+        public string Tur { get; set; } = null!;
+        public DateOnly? YayinTarihi { get; set; }
+        public decimal OrtalamaPuan { get; set; }
     }
 
     // Arama sonuçları için

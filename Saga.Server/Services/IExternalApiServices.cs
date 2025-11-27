@@ -52,9 +52,11 @@ namespace Saga.Server.Services
     // Oyuncu DTO
     public class OyuncuDto
     {
+        public string? HariciId { get; set; } // TMDB person ID
         public string Ad { get; set; } = null!;
         public string? Karakter { get; set; }
         public string? ProfilUrl { get; set; }
+        public int Sira { get; set; } // Kredilerde sıralama
     }
 
     // Google Books DTO

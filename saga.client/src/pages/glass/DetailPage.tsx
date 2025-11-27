@@ -829,6 +829,76 @@ export default function DetailPage() {
             </div>
           </div>
 
+          {/* Meta Info (Türler, Süre, Yazarlar vs.) */}
+          <div className="flex flex-wrap gap-4 mb-4 text-sm">
+            {/* Yönetmen */}
+            {icerik.yonetmen && (
+              <div>
+                <span className="text-[#8E8E93]">Yönetmen: </span>
+                <span className="text-white">{icerik.yonetmen}</span>
+              </div>
+            )}
+            {/* Türler */}
+            {icerik.turler && icerik.turler.length > 0 && (
+              <div>
+                <span className="text-[#8E8E93]">Tür: </span>
+                <span className="text-white">{icerik.turler.join(', ')}</span>
+              </div>
+            )}
+            {/* Süre (Film) */}
+            {icerik.sure && icerik.sure > 0 && (
+              <div>
+                <span className="text-[#8E8E93]">Süre: </span>
+                <span className="text-white">{icerik.sure} dk</span>
+              </div>
+            )}
+            {/* Sezon/Bölüm (Dizi) */}
+            {icerik.sezonSayisi && icerik.sezonSayisi > 0 && (
+              <div>
+                <span className="text-[#8E8E93]">Sezon: </span>
+                <span className="text-white">{icerik.sezonSayisi}</span>
+                {icerik.bolumSayisi && icerik.bolumSayisi > 0 && (
+                  <span className="text-white"> • {icerik.bolumSayisi} bölüm</span>
+                )}
+              </div>
+            )}
+            {/* Yazarlar (Kitap) */}
+            {icerik.yazarlar && icerik.yazarlar.length > 0 && (
+              <div>
+                <span className="text-[#8E8E93]">Yazar: </span>
+                <span className="text-white">{icerik.yazarlar.join(', ')}</span>
+              </div>
+            )}
+            {/* Sayfa Sayısı (Kitap) */}
+            {icerik.sayfaSayisi && icerik.sayfaSayisi > 0 && (
+              <div>
+                <span className="text-[#8E8E93]">Sayfa: </span>
+                <span className="text-white">{icerik.sayfaSayisi}</span>
+              </div>
+            )}
+            {/* Yayınevi (Kitap) */}
+            {icerik.yayinevi && (
+              <div>
+                <span className="text-[#8E8E93]">Yayınevi: </span>
+                <span className="text-white">{icerik.yayinevi}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Harici Puan (TMDB/IMDB) */}
+          {icerik.hariciPuan && icerik.hariciPuan > 0 && (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f39c12]/15">
+                <Star size={14} className="text-[#f39c12] fill-[#f39c12]" />
+                <span className="text-[#f39c12] font-semibold text-sm">{icerik.hariciPuan.toFixed(1)}</span>
+                {icerik.hariciOySayisi && icerik.hariciOySayisi > 0 && (
+                  <span className="text-[#f39c12]/70 text-xs">({icerik.hariciOySayisi.toLocaleString('tr-TR')} oy)</span>
+                )}
+              </div>
+              <span className="text-[#8E8E93] text-xs">TMDB</span>
+            </div>
+          )}
+
           {/* Description */}
           {icerik.aciklama && (
             <p className="text-[#8E8E93] text-sm leading-relaxed mb-6 line-clamp-4">
@@ -872,6 +942,46 @@ export default function DetailPage() {
           </GlassPanel>
         </div>
       </div>
+
+      {/* Cast Section - Oyuncu Kadrosu */}
+      {icerik.oyuncular && icerik.oyuncular.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Oyuncu Kadrosu
+          </h2>
+          <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar">
+            {icerik.oyuncular.slice(0, 12).map((oyuncu, index) => (
+              <div key={index} className="flex-shrink-0 w-28 text-center">
+                <div className="w-28 h-28 rounded-full overflow-hidden bg-white/5 mb-2 mx-auto border-2 border-white/10">
+                  {oyuncu.profilUrl ? (
+                    <img
+                      src={oyuncu.profilUrl}
+                      alt={oyuncu.ad}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#6C5CE7]/30 to-[#00CEC9]/30">
+                      <span className="text-2xl text-white font-semibold">
+                        {oyuncu.ad?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-white text-sm font-medium line-clamp-1">{oyuncu.ad}</p>
+                {oyuncu.karakter && (
+                  <p className="text-[#8E8E93] text-xs line-clamp-1">{oyuncu.karakter}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Comments Section */}
       <section>

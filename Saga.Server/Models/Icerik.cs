@@ -71,5 +71,8 @@ namespace Saga.Server.Models
 
         [Column("meta_veri", TypeName = "jsonb")]
         public string MetaVeri { get; set; } = "{}";
+
+        // Navigation
+        public ICollection<IcerikOyuncu> IcerikOyunculari { get; set; } = new List<IcerikOyuncu>();
     }
 }
