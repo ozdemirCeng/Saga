@@ -329,7 +329,7 @@ export const aktiviteApi = {
         };
     },
 
-    // Kullanıcının aktiviteleri (GUID id ile)
+    // Kullanıcının aktiviteleri (GUID id ile) - AktiviteController endpoint'i kullanılıyor
     getKullaniciAktiviteleri: async (
         kullaniciId: string,
         params?: { aktiviteTuru?: string; sayfa?: number; limit?: number; sayfaBoyutu?: number }
@@ -340,7 +340,8 @@ export const aktiviteApi = {
             limit: params?.limit || params?.sayfaBoyutu,
         };
         delete (queryParams as any).sayfaBoyutu;
-        const response = await api.get<Aktivite[]>(`/kullanici/${kullaniciId}/aktiviteler`, { params: queryParams });
+        // AktiviteController endpoint'i - tam veri içeriyor (veri objesi ile)
+        const response = await api.get<Aktivite[]>(`/aktivite/kullanici/${kullaniciId}`, { params: queryParams });
         return {
             data: response.data,
             toplamSayfa: parseInt(response.headers['x-toplam-sayfa'] || '1'),

@@ -118,6 +118,42 @@ function RatingBadge({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'm
   );
 }
 
+// Genişletilebilir açıklama komponenti
+function ExpandableDescription({ text, maxLength = 300 }: { text: string; maxLength?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!text) return null;
+  
+  const needsTruncation = text.length > maxLength;
+  const displayText = expanded || !needsTruncation ? text : `${text.substring(0, maxLength)}...`;
+  
+  return (
+    <div className="mb-6">
+      <p className="text-[#8E8E93] text-sm leading-relaxed whitespace-pre-line">
+        {displayText}
+      </p>
+      {needsTruncation && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-2 text-[#6C5CE7] text-sm font-medium hover:text-[#a29bfe] transition-colors flex items-center gap-1"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp size={16} />
+              Daha Az Göster
+            </>
+          ) : (
+            <>
+              <ChevronDown size={16} />
+              Devamını Oku
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Textarea({ placeholder, value, onChange, rows = 4, className = '' }: { placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; rows?: number; className?: string }) {
   return (
     <textarea
@@ -901,9 +937,7 @@ export default function DetailPage() {
 
           {/* Description */}
           {icerik.aciklama && (
-            <p className="text-[#8E8E93] text-sm leading-relaxed mb-6 line-clamp-4">
-              {icerik.aciklama}
-            </p>
+            <ExpandableDescription text={icerik.aciklama} />
           )}
 
           {/* Action Buttons */}

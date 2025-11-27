@@ -50,15 +50,34 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { EmptyState } from '../components/EmptyState';
 
 // Genişletilebilir metin komponenti
-function ExpandableText({ text, maxLength = 300 }: { text: string; maxLength?: number }) {
-    if (!text || text.length <= maxLength) {
-        return <Text size="lg">{text}</Text>;
+function ExpandableText({ text, maxLength = 500 }: { text: string; maxLength?: number }) {
+    const [expanded, setExpanded] = useState(false);
+    
+    if (!text) {
+        return null;
     }
     
+    // Kısa metin için direkt göster
+    if (text.length <= maxLength) {
+        return <Text size="md" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{text}</Text>;
+    }
+    
+    // Uzun metin için genişletilebilir göster
     return (
-        <Spoiler maxHeight={120} showLabel="Devamını Oku" hideLabel="Daha Az Göster">
-            <Text size="lg">{text}</Text>
-        </Spoiler>
+        <Box>
+            <Text size="md" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                {expanded ? text : `${text.substring(0, maxLength)}...`}
+            </Text>
+            <Button
+                variant="subtle"
+                size="xs"
+                mt="xs"
+                onClick={() => setExpanded(!expanded)}
+                style={{ fontWeight: 500 }}
+            >
+                {expanded ? '↑ Daha Az Göster' : '↓ Devamını Oku'}
+            </Button>
+        </Box>
     );
 }
 
@@ -369,7 +388,7 @@ export default function ContentDetailPage() {
                     {icerik.aciklama && (
                         <Box mb="xl">
                             <Text fw={500} mb="xs">Açıklama</Text>
-                            <ExpandableText text={icerik.aciklama} maxLength={400} />
+                            <ExpandableText text={icerik.aciklama} maxLength={600} />
                         </Box>
                     )}
 

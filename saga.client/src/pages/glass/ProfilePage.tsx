@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import {
   User,
   Edit3,
   Film,
   BookOpen,
   Star,
-  Heart,
   MessageCircle,
   Plus,
   Users,
@@ -20,8 +17,6 @@ import {
   Play,
   AlertTriangle,
   Trash2,
-  MoreHorizontal,
-  UserPlus,
   List,
   Camera,
   Upload,
@@ -30,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { kullaniciApi, aktiviteApi, kutuphaneApi, listeApi } from '../../services/api';
 import { supabase } from '../../services/supabase';
 import type { Kullanici, Aktivite, KutuphaneDurumu, Liste } from '../../services/api';
+import { ActivityCard } from '../../components/ActivityCard';
 
 // ============================================
 // NEBULA UI COMPONENTS
@@ -100,273 +96,6 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
       <p className="text-2xl font-bold text-white">{value}</p>
       <p className="text-xs text-[#8E8E93]">{label}</p>
     </div>
-  );
-}
-
-// ============================================
-// ACTIVITY CARD COMPONENT (FeedPage tarzı)
-// ============================================
-
-interface ActivityCardProps {
-  aktivite: Aktivite;
-  isOwnProfile: boolean;
-  onDelete?: (aktiviteId: number) => void;
-}
-
-function ActivityCard({ aktivite, isOwnProfile, onDelete }: ActivityCardProps) {
-  const navigate = useNavigate();
-  const [showMenu, setShowMenu] = useState(false);
-  
-  // Beğeni state
-  const [begeniSayisi, setBegeniSayisi] = useState(aktivite.begeniSayisi || 0);
-  const [begendim, setBegendim] = useState(aktivite.begendim || false);
-  const [begeniYukleniyor, setBegeniYukleniyor] = useState(false);
-  
-  const tarihStr = formatDistanceToNow(new Date(aktivite.olusturulmaZamani), {
-    addSuffix: true,
-    locale: tr,
-  });
-
-  const tur = aktivite.aktiviteTuru || aktivite.aktiviteTipiStr || '';
-  const veri = aktivite.veri || {};
-  const icerikAdi = veri.baslik || veri.icerikAdi || '';
-  const posterUrl = veri.posterUrl || '';
-  const icerikTur = veri.tur || aktivite.icerikTur || 'film';
-
-  // Aktivite türüne göre ikon
-  const getAktiviteIcon = () => {
-    switch (tur.toLowerCase()) {
-      case 'puanlama':
-        return <Star size={16} className="text-[#f39c12]" />;
-      case 'yorum':
-        return <MessageCircle size={16} className="text-[#6C5CE7]" />;
-      case 'listeye_ekleme':
-      case 'kutuphaneyeekleme':
-        return <List size={16} className="text-[#00CEC9]" />;
-      case 'takip':
-      case 'takipetme':
-        return <UserPlus size={16} className="text-[#00b894]" />;
-      case 'durum_guncelleme':
-      case 'listeolusturma':
-        return <Play size={16} className="text-[#74b9ff]" />;
-      default:
-        return <Heart size={16} className="text-[#fd79a8]" />;
-    }
-  };
-
-  // Aktivite mesajı
-  const getAktiviteMesaji = () => {
-    const takipEdilen = veri.takipEdilenKullaniciAdi || '';
-    
-    switch (tur.toLowerCase()) {
-      case 'puanlama':
-        return (
-          <>
-            <span className="font-semibold text-white">{icerikAdi}</span> için{' '}
-            <span className="text-[#f39c12] font-bold">{veri.puan}/10</span> puan verdi
-          </>
-        );
-      case 'yorum':
-        return (
-          <>
-            <span className="font-semibold text-white">{icerikAdi}</span> hakkında yorum yaptı
-          </>
-        );
-      case 'listeye_ekleme':
-      case 'kutuphaneyeekleme':
-        return (
-          <>
-            <span className="font-semibold text-white">{icerikAdi}</span> içeriğini{' '}
-            {veri.listeAdi ? (
-              <span className="text-[#00CEC9]">{veri.listeAdi}</span>
-            ) : (
-              'kütüphaneye'
-            )}{' '}
-            ekledi
-          </>
-        );
-      case 'takip':
-      case 'takipetme':
-        return (
-          <>
-            <span className="font-semibold text-white">@{takipEdilen}</span> kullanıcısını takip etmeye başladı
-          </>
-        );
-      case 'durum_guncelleme':
-        return (
-          <>
-            <span className="font-semibold text-white">{icerikAdi}</span> durumunu{' '}
-            <span className="text-[#74b9ff]">{veri.durum}</span> olarak güncelledi
-          </>
-        );
-      case 'listeolusturma':
-        return (
-          <>
-            <span className="font-semibold text-white">{veri.listeAdi}</span> listesini oluşturdu
-          </>
-        );
-      default:
-        return 'Bir aktivite gerçekleştirdi';
-    }
-  };
-
-  // İçerik türü ikonu
-  const turIkon = icerikTur === 'film' ? <Film size={14} /> : icerikTur === 'kitap' ? <BookOpen size={14} /> : null;
-
-  // İçerik detayına git
-  const handleContentClick = () => {
-    if (aktivite.icerikId && tur.toLowerCase() !== 'takip') {
-      navigate(`/icerik/${icerikTur}/${aktivite.icerikId}`);
-    }
-  };
-
-  // Silme işlemi
-  const handleDelete = () => {
-    if (onDelete && aktivite.id) {
-      onDelete(aktivite.id);
-    }
-    setShowMenu(false);
-  };
-
-  // Aktivite beğeni fonksiyonu
-  const handleBegeni = async () => {
-    if (begeniYukleniyor) return;
-    
-    setBegeniYukleniyor(true);
-    try {
-      const result = await aktiviteApi.toggleBegeni(aktivite.id);
-      setBegeniSayisi(result.begeniSayisi);
-      setBegendim(result.begendim);
-    } catch (error) {
-      console.error('Beğeni hatası:', error);
-    } finally {
-      setBegeniYukleniyor(false);
-    }
-  };
-
-  return (
-    <GlassCard className="mb-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-4">
-        {/* Aktivite ikonu */}
-        <div className="p-2.5 rounded-xl bg-white/5">
-          {getAktiviteIcon()}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {turIkon && <span className="text-[#8E8E93]">{turIkon}</span>}
-            <span className="text-xs text-[#636366] capitalize">{icerikTur}</span>
-          </div>
-          <p className="text-xs text-[#8E8E93] mt-0.5">{tarihStr}</p>
-        </div>
-
-        {/* Kendi profili için menü */}
-        {isOwnProfile && (
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-[#8E8E93]"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-[#1C1C1E] rounded-xl shadow-lg border border-white/10 overflow-hidden z-10 min-w-[140px]">
-                <button
-                  onClick={handleDelete}
-                  className="w-full px-4 py-2.5 text-sm text-[#fd79a8] hover:bg-white/5 flex items-center gap-2"
-                >
-                  <Trash2 size={14} />
-                  Sil
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Content Message */}
-      <p className="text-[#8E8E93] text-sm mb-4">{getAktiviteMesaji()}</p>
-
-      {/* Media Preview */}
-      {posterUrl && tur.toLowerCase() !== 'takip' && (
-        <div
-          className="flex gap-3 p-3 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition-colors"
-          onClick={handleContentClick}
-        >
-          <img
-            src={posterUrl}
-            alt={icerikAdi}
-            className="w-16 h-24 rounded-lg object-cover"
-          />
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-white text-sm line-clamp-2">{icerikAdi}</h4>
-            <div className="flex items-center gap-2 mt-1">
-              {turIkon}
-              <span className="text-xs text-[#8E8E93] capitalize">{icerikTur}</span>
-            </div>
-            {veri.puan && (
-              <div className="flex items-center gap-1 mt-2">
-                <Star size={14} className="text-[#f39c12] fill-[#f39c12]" />
-                <span className="text-sm font-semibold text-[#f39c12]">{veri.puan}</span>
-              </div>
-            )}
-            {veri.yorumOzet && (
-              <p className="text-xs text-[#8E8E93] mt-2 line-clamp-2">"{veri.yorumOzet}"</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Takip aktivitesi için kullanıcı preview */}
-      {tur.toLowerCase() === 'takip' && veri.takipEdilenKullaniciAdi && (
-        <div
-          className="flex items-center gap-3 p-3 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition-colors"
-          onClick={() => navigate(`/profil/${veri.takipEdilenKullaniciAdi}`)}
-        >
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00b894] to-[#6C5CE7] flex items-center justify-center overflow-hidden">
-            {veri.takipEdilenAvatar ? (
-              <img
-                src={veri.takipEdilenAvatar}
-                alt={veri.takipEdilenKullaniciAdi}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-white font-semibold">
-                {veri.takipEdilenKullaniciAdi?.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="font-semibold text-white">@{veri.takipEdilenKullaniciAdi}</p>
-            <p className="text-xs text-[#8E8E93]">Profili görüntüle</p>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/[0.08]">
-        <button
-          onClick={handleBegeni}
-          disabled={begeniYukleniyor}
-          className={`flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50 ${
-            begendim
-              ? 'text-[#fd79a8]'
-              : 'text-[#8E8E93] hover:text-[#fd79a8]'
-          }`}
-        >
-          <Heart size={16} className={begendim ? 'fill-[#fd79a8]' : ''} />
-          <span>{begeniSayisi > 0 ? begeniSayisi : 'Beğen'}</span>
-        </button>
-        <button
-          onClick={handleContentClick}
-          className="flex items-center gap-1.5 text-sm text-[#8E8E93] hover:text-[#6C5CE7] transition-colors"
-        >
-          <MessageCircle size={16} />
-          <span>Yorum</span>
-        </button>
-      </div>
-    </GlassCard>
   );
 }
 
@@ -477,6 +206,7 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const isOwnProfile = user?.kullaniciAdi === kullaniciAdi;
+  const isLoggedIn = !!user;
 
   // Load profile data
   useEffect(() => {
@@ -888,6 +618,8 @@ export default function ProfilePage() {
               <ActivityCard 
                 key={aktivite.id} 
                 aktivite={aktivite} 
+                isLoggedIn={isLoggedIn}
+                showUserInfo={false}
                 isOwnProfile={isOwnProfile}
                 onDelete={handleDeleteAktivite}
               />

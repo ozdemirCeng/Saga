@@ -251,9 +251,8 @@ function ActivityFeed() {
       {allActivities.map((aktivite: AktiviteFeedDto) => (
         <ActivityCard
           key={aktivite.id}
-          aktivite={aktivite}
-          onLike={(id) => console.log('Liked:', id)}
-          onComment={(id) => console.log('Comment:', id)}
+          aktivite={aktivite as any}
+          isLoggedIn={true}
         />
       ))}
 
