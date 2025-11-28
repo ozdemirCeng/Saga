@@ -830,61 +830,59 @@ export const kullaniciApi = {
 
 export const externalApi = {
     // TMDB Film ara
-    searchTmdb: async (q: string, sayfa?: number) => {
+    searchTmdb: async (q: string, sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/search', { params: { q, sayfa } });
         return response.data;
     },
-
     // TMDB Dizi ara
-    searchTmdbTv: async (q: string, sayfa?: number) => {
+    searchTmdbTv: async (q: string, sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/search-tv', { params: { q, sayfa } });
         return response.data;
     },
-
     // TMDB Film + Dizi ara (multi)
-    searchTmdbMulti: async (q: string, sayfa?: number) => {
+    searchTmdbMulti: async (q: string, sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/search-multi', { params: { q, sayfa } });
         return response.data;
     },
 
     // TMDB Popüler filmler
-    getTmdbPopular: async (sayfa?: number) => {
+    getTmdbPopular: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/popular', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB Popüler diziler
-    getTmdbPopularTv: async (sayfa?: number) => {
+    getTmdbPopularTv: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/popular-tv', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB En yüksek puanlı filmler
-    getTmdbTopRated: async (sayfa?: number) => {
+    getTmdbTopRated: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/top-rated', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB En yüksek puanlı diziler
-    getTmdbTopRatedTv: async (sayfa?: number) => {
+    getTmdbTopRatedTv: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/top-rated-tv', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB Vizyondaki filmler
-    getTmdbNowPlaying: async (sayfa?: number) => {
+    getTmdbNowPlaying: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/now-playing', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB Yayındaki diziler
-    getTmdbOnTheAir: async (sayfa?: number) => {
+    getTmdbOnTheAir: async (sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/on-the-air', { params: { sayfa } });
         return response.data;
     },
 
     // TMDB Trending (Film + Dizi)
-    getTmdbTrending: async (mediaType: 'all' | 'movie' | 'tv' = 'all', timeWindow: 'day' | 'week' = 'week', sayfa?: number) => {
+    getTmdbTrending: async (mediaType: 'all' | 'movie' | 'tv' = 'all', timeWindow: 'day' | 'week' = 'week', sayfa: number = 1) => {
         const response = await api.get<TmdbFilm[]>('/externalapi/tmdb/trending', { params: { mediaType, timeWindow, sayfa } });
         return response.data;
     },
@@ -901,35 +899,29 @@ export const externalApi = {
         return response.data;
     },
 
-    // TMDB Film import et
+    // Import işlemleri
     importTmdbFilm: async (tmdbId: string) => {
-        const response = await api.post<Icerik>(`/externalapi/tmdb/import/${tmdbId}`);
+        const response = await api.post<Icerik>('/externalapi/tmdb/import/' + tmdbId);
         return response.data;
     },
-
-    // TMDB Dizi import et
     importTmdbTvShow: async (tmdbId: string) => {
-        const response = await api.post<Icerik>(`/externalapi/tmdb/import-tv/${tmdbId}`);
+        const response = await api.post<Icerik>('/externalapi/tmdb/import-tv/' + tmdbId);
         return response.data;
     },
 
-    // Google Books ara
+    // Google Books
     searchBooks: async (q: string, baslangic?: number, limit?: number, orderBy?: 'relevance' | 'newest') => {
         const response = await api.get<GoogleBook[]>('/externalapi/books/search', {
             params: { q, baslangic, limit, orderBy },
         });
         return response.data;
     },
-
-    // Google Books detayı
     getBook: async (id: string) => {
-        const response = await api.get<GoogleBook>(`/externalapi/books/${id}`);
+        const response = await api.get<GoogleBook>('/externalapi/books/' + id);
         return response.data;
     },
-
-    // Google Books import et
     importBook: async (googleBooksId: string) => {
-        const response = await api.post<Icerik>(`/externalapi/books/import/${googleBooksId}`);
+        const response = await api.post<Icerik>('/externalapi/books/import/' + googleBooksId);
         return response.data;
     },
 };

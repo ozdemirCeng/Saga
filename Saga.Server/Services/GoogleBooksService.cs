@@ -55,49 +55,72 @@ namespace Saga.Server.Services
 
         public async Task<List<GoogleBookDto>> SearchBooksAsync(string query, int startIndex = 0, int maxResults = 20, string? orderBy = null)
         {
-            try
+            const int maxRetries = 3;
+            int retryCount = 0;
+            
+            while (retryCount < maxRetries)
             {
-                var encodedQuery = Uri.EscapeDataString(query);
-                // orderBy: relevance (varsayılan) veya newest
-                var order = string.IsNullOrEmpty(orderBy) ? "relevance" : orderBy;
-                var url = string.IsNullOrEmpty(_apiKey)
-                    ? $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}"
-                    : $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}&key={_apiKey}";
-
-                _logger.LogInformation("📚 Google Books API isteği: {Url}", url);
-
-                var response = await _httpClient.GetAsync(url);
-
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    _logger.LogWarning("Google Books arama hatası: {StatusCode}", response.StatusCode);
-                    return new List<GoogleBookDto>();
-                }
+                    var encodedQuery = Uri.EscapeDataString(query);
+                    // orderBy: relevance (varsayılan) veya newest
+                    var order = string.IsNullOrEmpty(orderBy) ? "relevance" : orderBy;
+                    var url = string.IsNullOrEmpty(_apiKey)
+                        ? $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}"
+                        : $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}&key={_apiKey}";
 
-                var content = await response.Content.ReadAsStringAsync();
-                var searchData = JsonSerializer.Deserialize<JsonElement>(content);
+                    _logger.LogInformation("📚 Google Books API isteği: {Url}", url);
 
-                var results = new List<GoogleBookDto>();
+                    var response = await _httpClient.GetAsync(url);
 
-                if (searchData.TryGetProperty("items", out var itemsArray))
-                {
-                    foreach (var item in itemsArray.EnumerateArray())
+                    // Rate limit (429) hatası - exponential backoff ile retry
+                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                     {
-                        var bookDto = ParseBookData(item);
-                        if (bookDto != null)
+                        retryCount++;
+                        if (retryCount < maxRetries)
                         {
-                            results.Add(bookDto);
+                            var delay = (int)Math.Pow(2, retryCount) * 1000; // 2s, 4s, 8s
+                            _logger.LogWarning("Google Books rate limit, {RetryCount}. deneme, {Delay}ms bekleniyor...", retryCount, delay);
+                            await Task.Delay(delay);
+                            continue;
+                        }
+                        _logger.LogWarning("Google Books rate limit aşıldı, maksimum deneme sayısına ulaşıldı");
+                        return new List<GoogleBookDto>();
+                    }
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Google Books arama hatası: {StatusCode}", response.StatusCode);
+                        return new List<GoogleBookDto>();
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var searchData = JsonSerializer.Deserialize<JsonElement>(content);
+
+                    var results = new List<GoogleBookDto>();
+
+                    if (searchData.TryGetProperty("items", out var itemsArray))
+                    {
+                        foreach (var item in itemsArray.EnumerateArray())
+                        {
+                            var bookDto = ParseBookData(item);
+                            if (bookDto != null)
+                            {
+                                results.Add(bookDto);
+                            }
                         }
                     }
-                }
 
-                return results;
+                    return results;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Google Books araması sırasında hata: {Query}", query);
+                    return new List<GoogleBookDto>();
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Google Books araması sırasında hata: {Query}", query);
-                return new List<GoogleBookDto>();
-            }
+            
+            return new List<GoogleBookDto>();
         }
 
         public async Task<Icerik?> ImportBookAsync(string googleBooksId)

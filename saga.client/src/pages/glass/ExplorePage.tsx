@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Film, BookOpen, Star, Loader2, X, Tv, TrendingUp, Clock, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { externalApi } from '../../services/api';
@@ -100,6 +100,37 @@ const TV_GENRES = [
   { id: 37, name: 'Western' },
 ];
 
+// "Tümü" seçiliyken kullanılacak birleşik türler (ortak ID'ler)
+const COMBINED_GENRES = [
+  { id: 16, name: 'Animasyon' },
+  { id: 35, name: 'Komedi' },
+  { id: 80, name: 'Suç' },
+  { id: 99, name: 'Belgesel' },
+  { id: 18, name: 'Dram' },
+  { id: 10751, name: 'Aile' },
+  { id: 9648, name: 'Gizem' },
+  { id: 37, name: 'Western' },
+];
+
+// Film ve dizi tür eşleştirmesi (benzer türler için)
+// Kullanıcı bir tür seçtiğinde, hem film hem dizi için geçerli ID'leri döndürür
+const GENRE_MAPPING: { [key: number]: number[] } = {
+  // Film türleri -> eşleşen tüm ID'ler
+  28: [28, 10759], // Aksiyon -> Film Aksiyon + Dizi Aksiyon&Macera
+  12: [12, 10759], // Macera -> Film Macera + Dizi Aksiyon&Macera
+  14: [14, 10765], // Fantastik -> Film Fantastik + Dizi Bilim Kurgu&Fantazi
+  878: [878, 10765], // Bilim Kurgu -> Film Bilim Kurgu + Dizi Bilim Kurgu&Fantazi
+  10752: [10752, 10768], // Savaş -> Film Savaş + Dizi Savaş&Politik
+  // Dizi türleri -> eşleşen tüm ID'ler
+  10759: [28, 12, 10759], // Aksiyon&Macera -> kendisi + Film Aksiyon + Film Macera
+  10765: [14, 878, 10765], // Bilim Kurgu&Fantazi -> kendisi + Film Fantastik + Film Bilim Kurgu
+  10768: [10752, 10768], // Savaş&Politik -> kendisi + Film Savaş
+  // Ortak türler (aynı ID)
+  16: [16], 35: [35], 80: [80], 99: [99], 18: [18], 10751: [10751], 9648: [9648], 37: [37],
+  27: [27], 10402: [10402], 10749: [10749], 36: [36], 10770: [10770], 53: [53],
+  10762: [10762], 10763: [10763], 10764: [10764], 10766: [10766], 10767: [10767],
+};
+
 interface FilterPanelProps {
   // Tab
   activeTab: 'tmdb' | 'kitaplar';
@@ -148,7 +179,8 @@ function FilterPanel({
   const [showRatingFilter, setShowRatingFilter] = useState(true);
   
   // Aktif tab'a göre tür listesi
-  const genres = tmdbFilter === 'tv' ? TV_GENRES : FILM_GENRES;
+  // "Tümü" seçiliyken sadece ortak türleri göster
+  const genres = tmdbFilter === 'all' ? COMBINED_GENRES : tmdbFilter === 'tv' ? TV_GENRES : FILM_GENRES;
 
   const toggleGenre = (genreId: number) => {
     if (selectedGenres.includes(genreId)) {
@@ -552,9 +584,18 @@ export default function ExplorePage() {
   // TMDB filters
   const [tmdbFilter, setTmdbFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [tmdbSort, setTmdbSort] = useState<'popular' | 'top_rated' | 'trending' | 'now_playing'>('popular');
+  const [tmdbPage, setTmdbPage] = useState(1);
+  const [tmdbHasMore, setTmdbHasMore] = useState(true);
+  const [tmdbLoadingMore, setTmdbLoadingMore] = useState(false);
+  const tmdbLoadingRef = useRef(false);
 
   // Kitap filters
   const [bookSort, setBookSort] = useState<'relevance' | 'newest'>('relevance');
+  const [bookStartIndex, setBookStartIndex] = useState(0);
+  const [bookHasMore, setBookHasMore] = useState(true);
+  const [bookLoadingMore, setBookLoadingMore] = useState(false);
+  const [bookDataLoaded, setBookDataLoaded] = useState(false);
+  const [bookError, setBookError] = useState(false);
 
   // Advanced filter states
   const [minYear, setMinYear] = useState<number | null>(null);
@@ -579,6 +620,9 @@ export default function ExplorePage() {
   // Filter helper - filtre uygulama
   const applyFilters = () => {
     setAppliedFilters({ minYear, maxYear, minPuan, genres: selectedGenres });
+    setTmdbPage(1);
+    setTmdbResults([]);
+    setTmdbHasMore(true);
   };
 
   const resetFilters = () => {
@@ -587,117 +631,51 @@ export default function ExplorePage() {
     setMinPuan(null);
     setSelectedGenres([]);
     setAppliedFilters({ minYear: null, maxYear: null, minPuan: null, genres: [] });
+    setTmdbPage(1);
+    setTmdbResults([]);
+    setTmdbHasMore(true);
   };
 
-  // TMDB verilerini yükle (arama yokken sıralamaya göre)
-  const loadTmdbData = useCallback(async () => {
-    if (activeTab !== 'tmdb') return;
-    
-    // Arama varsa arama yap
-    if (searchQuery.trim().length >= 2) {
-      setLoading(true);
-      try {
-        let results: TmdbFilm[];
-        if (tmdbFilter === 'movie') {
-          results = await externalApi.searchTmdb(searchQuery);
-        } else if (tmdbFilter === 'tv') {
-          results = await externalApi.searchTmdbTv(searchQuery);
-        } else {
-          results = await externalApi.searchTmdbMulti(searchQuery);
-        }
-        setTmdbResults(results);
-      } catch (err) {
-        console.error('TMDB arama hatası:', err);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+  // TMDB filter/sort değiştiğinde state'leri sıfırla
+  const handleTmdbFilterChange = (filter: 'all' | 'movie' | 'tv') => {
+    if (filter === tmdbFilter) return;
+    setTmdbFilter(filter);
+    setTmdbPage(1);
+    setTmdbResults([]);
+    setTmdbHasMore(true);
+  };
 
-    // Arama yoksa sıralamaya göre yükle
-    setLoading(true);
-    try {
-      let results: TmdbFilm[] = [];
-      
-      if (tmdbSort === 'popular') {
-        if (tmdbFilter === 'movie') {
-          results = await externalApi.getTmdbPopular();
-        } else if (tmdbFilter === 'tv') {
-          results = await externalApi.getTmdbPopularTv();
-        } else {
-          const [movies, tv] = await Promise.all([
-            externalApi.getTmdbPopular(),
-            externalApi.getTmdbPopularTv(),
-          ]);
-          results = [...movies, ...tv].sort((a, b) => (b.puan || 0) - (a.puan || 0));
-        }
-      } else if (tmdbSort === 'top_rated') {
-        if (tmdbFilter === 'movie') {
-          results = await externalApi.getTmdbTopRated();
-        } else if (tmdbFilter === 'tv') {
-          results = await externalApi.getTmdbTopRatedTv();
-        } else {
-          const [movies, tv] = await Promise.all([
-            externalApi.getTmdbTopRated(),
-            externalApi.getTmdbTopRatedTv(),
-          ]);
-          results = [...movies, ...tv].sort((a, b) => (b.puan || 0) - (a.puan || 0));
-        }
-      } else if (tmdbSort === 'trending') {
-        const mediaType = tmdbFilter === 'movie' ? 'movie' : tmdbFilter === 'tv' ? 'tv' : 'all';
-        results = await externalApi.getTmdbTrending(mediaType);
-      } else if (tmdbSort === 'now_playing') {
-        if (tmdbFilter === 'movie') {
-          results = await externalApi.getTmdbNowPlaying();
-        } else if (tmdbFilter === 'tv') {
-          results = await externalApi.getTmdbOnTheAir();
-        } else {
-          const [movies, tv] = await Promise.all([
-            externalApi.getTmdbNowPlaying(),
-            externalApi.getTmdbOnTheAir(),
-          ]);
-          results = [...movies, ...tv];
-        }
-      }
-      
-      // Filtreleri uygula (yıl, puan ve tür)
-      if (appliedFilters.minYear || appliedFilters.maxYear || appliedFilters.minPuan || appliedFilters.genres.length > 0) {
-        results = results.filter(item => {
-          // Yıl filtresi
-          const year = item.yayinTarihi ? parseInt(item.yayinTarihi.split('-')[0]) : null;
-          if (appliedFilters.minYear && (!year || year < appliedFilters.minYear)) return false;
-          if (appliedFilters.maxYear && (!year || year > appliedFilters.maxYear)) return false;
-          
-          // Puan filtresi
-          if (appliedFilters.minPuan && (!item.puan || item.puan < appliedFilters.minPuan)) return false;
-          
-          // Tür filtresi - eğer seçili türler varsa, içeriğin en az bir türü eşleşmeli
-          if (appliedFilters.genres.length > 0) {
-            const itemGenres = item.turIds || [];
-            const hasMatchingGenre = appliedFilters.genres.some(genreId => itemGenres.includes(genreId));
-            if (!hasMatchingGenre) return false;
-          }
-          
-          return true;
-        });
-      }
-      
-      setTmdbResults(results);
-    } catch (err) {
-      console.error('TMDB veri yükleme hatası:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, searchQuery, tmdbFilter, tmdbSort, appliedFilters]);
+  const handleTmdbSortChange = (sort: 'popular' | 'top_rated' | 'trending' | 'now_playing') => {
+    if (sort === tmdbSort) return;
+    setTmdbSort(sort);
+    setTmdbPage(1);
+    setTmdbResults([]);
+    setTmdbHasMore(true);
+  };
+
+  // Kitap sort değiştiğinde state'leri sıfırla
+  const handleBookSortChange = (sort: 'relevance' | 'newest') => {
+    if (sort === bookSort) return;
+    setBookSort(sort);
+    setBookStartIndex(0);
+    setBookResults([]);
+    setBookHasMore(true);
+    setBookDataLoaded(false);
+    setBookError(false);
+  };
+
+  // TMDB verilerini yükle - useRef ile fonksiyon referansını sabit tut
+  const tmdbParamsRef = useRef({ tmdbFilter, tmdbSort, appliedFilters, searchQuery });
+  tmdbParamsRef.current = { tmdbFilter, tmdbSort, appliedFilters, searchQuery };
+  
+  const tmdbResultsRef = useRef<TmdbFilm[]>([]);
+  tmdbResultsRef.current = tmdbResults;
 
   // Arama fonksiyonu
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       setBookResults([]);
-      // TMDB için ayrıca sıralamaya göre yükle
-      if (activeTab === 'tmdb') {
-        loadTmdbData();
-      } else {
+      if (activeTab !== 'tmdb') {
         setTmdbResults([]);
       }
       return;
@@ -734,14 +712,199 @@ export default function ExplorePage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, activeTab, tmdbFilter, bookSort, loadTmdbData]);
+  }, [searchQuery, activeTab, tmdbFilter, bookSort]);
 
-  // TMDB verileri yükle (tab veya filtre değişince)
+  // TMDB verileri yükle (tab, filtre, sort veya sayfa değişince)
+  const tmdbDataLoadedRef = useRef(false);
+  
+  // Filter/sort değişince reset
   useEffect(() => {
-    if (activeTab === 'tmdb' && !searchQuery.trim()) {
-      loadTmdbData();
-    }
-  }, [activeTab, tmdbFilter, tmdbSort, loadTmdbData, searchQuery, appliedFilters]);
+    tmdbDataLoadedRef.current = false;
+  }, [tmdbFilter, tmdbSort, appliedFilters]);
+  
+  useEffect(() => {
+    if (activeTab !== 'tmdb') return;
+    if (searchQuery.trim().length >= 2) return; // Arama varsa bu effect çalışmaz
+    
+    // Zaten yükleme yapılıyorsa atla
+    if (tmdbLoadingRef.current) return;
+    
+    const isFirstPage = tmdbPage === 1;
+    
+    // SADECE ilk sayfa için: zaten yüklüyse atla
+    if (isFirstPage && tmdbDataLoadedRef.current && tmdbResultsRef.current.length > 0) return;
+    
+    const loadData = async () => {
+      const currentResults = tmdbResultsRef.current;
+      const { tmdbFilter: filter, tmdbSort: sort, appliedFilters: filters } = tmdbParamsRef.current;
+      
+      tmdbLoadingRef.current = true;
+      if (isFirstPage) {
+        setLoading(true);
+      } else {
+        setTmdbLoadingMore(true);
+      }
+      
+      try {
+        let results: TmdbFilm[] = [];
+        
+        if (sort === 'popular') {
+          if (filter === 'movie') {
+            results = await externalApi.getTmdbPopular(tmdbPage);
+          } else if (filter === 'tv') {
+            results = await externalApi.getTmdbPopularTv(tmdbPage);
+          } else {
+            const [movies, tv] = await Promise.all([
+              externalApi.getTmdbPopular(tmdbPage),
+              externalApi.getTmdbPopularTv(tmdbPage),
+            ]);
+            results = [...movies, ...tv].sort((a, b) => (b.puan || 0) - (a.puan || 0));
+          }
+        } else if (sort === 'top_rated') {
+          if (filter === 'movie') {
+            results = await externalApi.getTmdbTopRated(tmdbPage);
+          } else if (filter === 'tv') {
+            results = await externalApi.getTmdbTopRatedTv(tmdbPage);
+          } else {
+            const [movies, tv] = await Promise.all([
+              externalApi.getTmdbTopRated(tmdbPage),
+              externalApi.getTmdbTopRatedTv(tmdbPage),
+            ]);
+            results = [...movies, ...tv].sort((a, b) => (b.puan || 0) - (a.puan || 0));
+          }
+        } else if (sort === 'trending') {
+          const mediaType = filter === 'movie' ? 'movie' : filter === 'tv' ? 'tv' : 'all';
+          results = await externalApi.getTmdbTrending(mediaType, 'week', tmdbPage);
+        } else if (sort === 'now_playing') {
+          if (filter === 'movie') {
+            results = await externalApi.getTmdbNowPlaying(tmdbPage);
+          } else if (filter === 'tv') {
+            results = await externalApi.getTmdbOnTheAir(tmdbPage);
+          } else {
+            const [movies, tv] = await Promise.all([
+              externalApi.getTmdbNowPlaying(tmdbPage),
+              externalApi.getTmdbOnTheAir(tmdbPage),
+            ]);
+            results = [...movies, ...tv];
+          }
+        }
+        
+        // Filtreleri uygula (yıl, puan ve tür)
+        if (filters.minYear || filters.maxYear || filters.minPuan || filters.genres.length > 0) {
+          // Seçilen türler için tüm eşleşen ID'leri topla (film ve dizi için)
+          const expandedGenreIds = new Set<number>();
+          filters.genres.forEach(genreId => {
+            const mappedIds = GENRE_MAPPING[genreId] || [genreId];
+            mappedIds.forEach(id => expandedGenreIds.add(id));
+          });
+          
+          results = results.filter(item => {
+            const year = item.yayinTarihi ? parseInt(item.yayinTarihi.split('-')[0]) : null;
+            if (filters.minYear && (!year || year < filters.minYear)) return false;
+            if (filters.maxYear && (!year || year > filters.maxYear)) return false;
+            if (filters.minPuan && (!item.puan || item.puan < filters.minPuan)) return false;
+            if (filters.genres.length > 0) {
+              const itemGenres = item.turIds || [];
+              // İçeriğin türlerinden herhangi biri genişletilmiş tür listesinde var mı?
+              const hasMatchingGenre = itemGenres.some(itemGenreId => expandedGenreIds.has(itemGenreId));
+              if (!hasMatchingGenre) return false;
+            }
+            return true;
+          });
+        }
+        
+        // Duplicate'leri filtrele (aynı ID + mediaType kombinasyonu)
+        const existingIds = new Set(currentResults.map(r => `${r.mediaType}-${r.id}`));
+        const uniqueNewResults = results.filter(r => !existingIds.has(`${r.mediaType}-${r.id}`));
+        
+        const merged = isFirstPage ? results : [...currentResults, ...uniqueNewResults];
+        setTmdbResults(merged);
+        
+        // TMDB genelde sayfa başına 20 sonuç döndürür
+        // API'den sonuç geldiyse daha fazla veri var demektir
+        setTmdbHasMore(results.length > 0);
+        
+        if (isFirstPage) {
+          tmdbDataLoadedRef.current = true;
+        }
+      } catch (err) {
+        console.error('TMDB veri yükleme hatası:', err);
+      } finally {
+        if (isFirstPage) {
+          setLoading(false);
+        } else {
+          setTmdbLoadingMore(false);
+        }
+        tmdbLoadingRef.current = false;
+      }
+    };
+    
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, tmdbFilter, tmdbSort, tmdbPage, appliedFilters, searchQuery]);
+
+  // Scroll state'lerini ref'te tut (stale closure önleme)
+  const tmdbScrollStateRef = useRef({ loading: false, tmdbLoadingMore: false, tmdbHasMore: true });
+  tmdbScrollStateRef.current = { loading, tmdbLoadingMore, tmdbHasMore };
+
+  // Scroll ile TMDB için sonsuz kaydırma (throttled)
+  const tmdbScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'tmdb') return;
+
+    const handleScroll = () => {
+      const { loading: isLoading, tmdbLoadingMore: isLoadingMore, tmdbHasMore: hasMore } = tmdbScrollStateRef.current;
+      
+      // Yükleme yapılıyorsa veya daha fazla veri yoksa atla
+      if (isLoading || isLoadingMore || !hasMore || tmdbLoadingRef.current) return;
+      if (tmdbScrollTimeoutRef.current) return; // Throttle: bekleyen timeout varsa atla
+      
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 400;
+      if (scrollPosition >= threshold) {
+        tmdbScrollTimeoutRef.current = setTimeout(() => {
+          setTmdbPage(prev => prev + 1);
+          tmdbScrollTimeoutRef.current = null;
+        }, 300);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (tmdbScrollTimeoutRef.current) {
+        clearTimeout(tmdbScrollTimeoutRef.current);
+      }
+    };
+  }, [activeTab]); // Sadece tab değişince re-attach
+
+  // Scroll ile Kitaplar için sonsuz kaydırma (throttled)
+  const bookScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'kitaplar') return;
+
+    const handleScroll = () => {
+      if (loading || bookLoadingMore || !bookHasMore) return;
+      if (bookScrollTimeoutRef.current) return; // Throttle: bekleyen istek varsa atla
+      
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 400;
+      if (scrollPosition >= threshold) {
+        bookScrollTimeoutRef.current = setTimeout(() => {
+          setBookStartIndex(prev => prev + 40);
+          bookScrollTimeoutRef.current = null;
+        }, 800); // 800ms bekle
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (bookScrollTimeoutRef.current) {
+        clearTimeout(bookScrollTimeoutRef.current);
+      }
+    };
+  }, [activeTab, loading, bookLoadingMore, bookHasMore]);
 
   // Kitaplar için varsayılan veri yükle (tab değişince veya sıralama değişince)
   useEffect(() => {
@@ -751,10 +914,21 @@ export default function ExplorePage() {
       // Arama varsa zaten handleSearch çalışacak
       if (searchQuery.trim().length >= 2) return;
       
-      setLoading(true);
+      // Hata varsa ve ilk sayfa ise tekrar deneme
+      if (bookError && bookStartIndex === 0) return;
+      
+      // İlk sayfa zaten yüklü ve yeni istek değilse atla
+      if (bookDataLoaded && bookStartIndex === 0 && bookResults.length > 0) return;
+      
+      const isFirstPage = bookStartIndex === 0;
+      if (isFirstPage) {
+        setLoading(true);
+      } else {
+        setBookLoadingMore(true);
+      }
       try {
         // Varsayılan olarak "bestseller" araması yap
-        const results = await externalApi.searchBooks('bestseller', 0, 40, bookSort);
+        const results = await externalApi.searchBooks('bestseller', bookStartIndex, 40, bookSort);
         
         // "En Yeni" seçiliyse, yayın yılına göre sırala (client tarafında)
         if (bookSort === 'newest' && results.length > 0) {
@@ -765,16 +939,32 @@ export default function ExplorePage() {
           });
         }
         
-        setBookResults(results);
+        // Duplicate'leri filtrele (aynı ID)
+        const existingIds = new Set(bookResults.map(r => r.id));
+        const uniqueNewResults = results.filter(r => !existingIds.has(r.id));
+        
+        const merged = isFirstPage ? results : [...bookResults, ...uniqueNewResults];
+        setBookResults(merged);
+        setBookHasMore(uniqueNewResults.length > 0 || (isFirstPage && results.length > 0));
+        if (isFirstPage) {
+          setBookDataLoaded(true);
+        }
+        setBookError(false);
       } catch (err) {
         console.error('Kitap yükleme hatası:', err);
+        setBookError(true);
+        setBookHasMore(false);
       } finally {
-        setLoading(false);
+        if (isFirstPage) {
+          setLoading(false);
+        } else {
+          setBookLoadingMore(false);
+        }
       }
     };
     
     loadBooksData();
-  }, [activeTab, bookSort, searchQuery]);
+  }, [activeTab, bookSort, searchQuery, bookStartIndex]);
 
   // Arama tetikle
   useEffect(() => {
@@ -906,6 +1096,11 @@ export default function ExplorePage() {
               </p>
             </NebulaCard>
           ) : null}
+          {tmdbLoadingMore && (
+            <div className="flex justify-center py-6">
+              <Loader2 size={24} className="animate-spin text-[#6C5CE7]" />
+            </div>
+          )}
         </>
       )}
 
@@ -932,6 +1127,11 @@ export default function ExplorePage() {
               </p>
             </NebulaCard>
           ) : null}
+          {bookLoadingMore && (
+            <div className="flex justify-center py-6">
+              <Loader2 size={24} className="animate-spin text-[#00b894]" />
+            </div>
+          )}
         </>
       )}
       </div>
@@ -942,11 +1142,11 @@ export default function ExplorePage() {
           <FilterPanel
             activeTab={activeTab}
             tmdbFilter={tmdbFilter}
-            onTmdbFilterChange={setTmdbFilter}
+            onTmdbFilterChange={handleTmdbFilterChange}
             tmdbSort={tmdbSort}
-            onTmdbSortChange={setTmdbSort}
+            onTmdbSortChange={handleTmdbSortChange}
             bookSort={bookSort}
-            onBookSortChange={setBookSort}
+            onBookSortChange={handleBookSortChange}
             minYear={minYear}
             maxYear={maxYear}
             minPuan={minPuan}
