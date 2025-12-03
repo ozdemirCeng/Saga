@@ -245,22 +245,24 @@ namespace Saga.Server.Controllers
             }
         }
 
-        // GET: api/externalapi/books/search?q={query}
+        // GET: api/externalapi/books/search?q={query}&langRestrict={lang}&filter={filter}
         [HttpGet("books/search")]
         [AllowAnonymous]
-        public async Task<ActionResult<List<GoogleBookDto>>> SearchGoogleBooks(
+        public async Task<ActionResult<GoogleBooksSearchResult>> SearchGoogleBooks(
             [FromQuery] string q, 
             [FromQuery] int baslangic = 0,
-            [FromQuery] int limit = 20,
-            [FromQuery] string? orderBy = null)
+            [FromQuery] int limit = 40,
+            [FromQuery] string? orderBy = null,
+            [FromQuery] string? langRestrict = null,
+            [FromQuery] string? filter = null)
         {
             if (string.IsNullOrWhiteSpace(q))
             {
                 return BadRequest(new { message = "Arama terimi boş olamaz." });
             }
 
-            var results = await _googleBooksService.SearchBooksAsync(q, baslangic, limit, orderBy);
-            return Ok(results);
+            var result = await _googleBooksService.SearchBooksAsync(q, baslangic, limit, orderBy, langRestrict, filter);
+            return Ok(result);
         }
 
         // GET: api/externalapi/books/{id}
@@ -399,5 +401,6 @@ namespace Saga.Server.Controllers
                 basarisiz = failed
             });
         }
+
     }
 }

@@ -36,9 +36,9 @@ namespace Saga.Server.Controllers
 
             var kullaniciId = GetCurrentUserIdOrNull();
 
-            // İstatistikleri al
-            var yorumSayisi = await _context.Yorumlar.CountAsync(y => y.IcerikId == id && !y.Silindi);
-            var listeyeEklenmeSayisi = await _context.ListeIcerikleri.CountAsync(li => li.IcerikId == id);
+            // İstatistikler zaten Icerik tablosunda trigger ile güncelleniyor, tekrar saymaya gerek yok.
+            // var yorumSayisi = await _context.Yorumlar.CountAsync(y => y.IcerikId == id && !y.Silindi);
+            // var listeyeEklenmeSayisi = await _context.ListeIcerikleri.CountAsync(li => li.IcerikId == id);
 
             // Oyuncuları tablodan çek
             var oyuncular = await _context.IcerikOyunculari
@@ -93,8 +93,8 @@ namespace Saga.Server.Controllers
                 PuanlamaSayisi = icerik.PuanlamaSayisi,
                 HariciPuan = icerik.HariciPuan,
                 HariciOySayisi = icerik.HariciOySayisi,
-                YorumSayisi = yorumSayisi,
-                ListeyeEklenmeSayisi = listeyeEklenmeSayisi,
+                YorumSayisi = icerik.YorumSayisi,
+                ListeyeEklenmeSayisi = icerik.ListeyeEklenmeSayisi,
                 GoruntulemeSayisi = icerik.GoruntulemeSayisi,
                 PopulerlikSkoru = icerik.PopulerlikSkoru,
                 OlusturulmaZamani = icerik.OlusturulmaZamani,

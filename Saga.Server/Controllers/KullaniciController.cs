@@ -182,8 +182,8 @@ namespace Saga.Server.Controllers
                     _context.Takipler.Add(takip);
                     await _context.SaveChangesAsync();
 
-                    // Aktivite kaydı
-                    await CreateTakipAktivite(kullaniciId, id);
+                    // NOT: Aktivite kaydı artık veritabanı trigger'ı (trg_akt_takip) tarafından yapılıyor.
+                    // Çifte kayıt sorununu önlemek için CreateTakipAktivite çağrısı kaldırıldı.
 
                     return Ok(new { message = "Kullanıcı takip edildi", takipEdiyor = true });
                 }
@@ -432,21 +432,19 @@ namespace Saga.Server.Controllers
             return Ok(response);
         }
 
-        // Helper Methods
-        private async Task CreateTakipAktivite(Guid takipEdenId, Guid takipEdilenId)
-        {
-            // Takip aktiviteleri şu an sadece C# tarafında üretiliyor; DB trigger'ı olmadığı için bu kayıt tek kaynaktan geliyor.
-            var aktivite = new Aktivite
-            {
-                KullaniciId = takipEdenId,
-                AktiviteTuru = AktiviteTuru.takip,
-                Veri = System.Text.Json.JsonSerializer.Serialize(new { takipEdilenId }),
-                OlusturulmaZamani = DateTime.UtcNow
-            };
-
-            _context.Aktiviteler.Add(aktivite);
-            await _context.SaveChangesAsync();
-        }
+        // CreateTakipAktivite metodu artık kullanılmıyor; takip aktiviteleri veritabanı trigger'ı (trg_akt_takip) ile oluşturuluyor.
+        // private async Task CreateTakipAktivite(Guid takipEdenId, Guid takipEdilenId)
+        // {
+        //     var aktivite = new Aktivite
+        //     {
+        //         KullaniciId = takipEdenId,
+        //         AktiviteTuru = AktiviteTuru.takip,
+        //         Veri = System.Text.Json.JsonSerializer.Serialize(new { takipEdilenId }),
+        //         OlusturulmaZamani = DateTime.UtcNow
+        //     };
+        //     _context.Aktiviteler.Add(aktivite);
+        //     await _context.SaveChangesAsync();
+        // }
 
         // DELETE: api/kullanici/hesap
         // Kullanıcı hesabını kalıcı olarak siler

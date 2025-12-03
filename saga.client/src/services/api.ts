@@ -285,6 +285,12 @@ export interface TmdbFilm {
     voteCount?: number;
 }
 
+// Google Books arama sonucu (totalItems ile birlikte)
+export interface GoogleBooksSearchResult {
+    items: GoogleBook[];
+    totalItems: number;
+}
+
 export interface GoogleBook {
     id: string;
     baslik: string;
@@ -294,6 +300,7 @@ export interface GoogleBook {
     yayinTarihi?: string;
     ortalamaPuan?: number;
     oySayisi?: number;
+    dil?: string; // Backend'den gelen dil bilgisi (tr, en, vs.)
     // Alternatif alanlar (frontend uyumluluğu için)
     title?: string;
     authors?: string[];
@@ -302,6 +309,7 @@ export interface GoogleBook {
     publishedDate?: string;
     averageRating?: number;
     ratingsCount?: number;
+    language?: string; // Alternatif dil alanı
 }
 
 // ============================================
@@ -909,10 +917,11 @@ export const externalApi = {
         return response.data;
     },
 
-    // Google Books
-    searchBooks: async (q: string, baslangic?: number, limit?: number, orderBy?: 'relevance' | 'newest') => {
-        const response = await api.get<GoogleBook[]>('/externalapi/books/search', {
-            params: { q, baslangic, limit, orderBy },
+    // Google Books - totalItems bilgisi ile birlikte döner
+    // filter: 'paid-ebooks' (ticari), 'free-ebooks', 'ebooks', 'full', 'partial'
+    searchBooks: async (q: string, baslangic?: number, limit?: number, orderBy?: 'relevance' | 'newest', langRestrict?: string, filter?: string) => {
+        const response = await api.get<GoogleBooksSearchResult>('/externalapi/books/search', {
+            params: { q, baslangic, limit, orderBy, langRestrict, filter },
         });
         return response.data;
     },

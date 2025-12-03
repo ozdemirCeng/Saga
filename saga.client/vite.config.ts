@@ -6,7 +6,17 @@ export default defineConfig({
     plugins: [react()],
     server: {
         port: 5173,
-        // HTTPS ve Sertifika ayarlarını tamamen sildik.
-        // Artık proje HTTP olarak (s harfi olmadan) çalışacak.
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    ui: ['@mantine/core', '@mantine/hooks', '@emotion/react', '@emotion/styled'],
+                    utils: ['axios', '@tanstack/react-query', 'date-fns']
+                }
+            }
+        },
+        chunkSizeWarningLimit: 1000
     }
 })

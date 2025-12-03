@@ -213,13 +213,13 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+
   // Arama state
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery] = useDebouncedValue(searchQuery, 500);
   const [activeTab, setActiveTab] = useState<'database' | 'tmdb' | 'books'>('database');
   const [importingId, setImportingId] = useState<string | null>(null);
-  
+
   // Kitaplar için sıralama
   const [bookSort, setBookSort] = useState<'relevance' | 'newest'>('relevance');
 
@@ -363,14 +363,6 @@ export default function ExplorePage() {
     staleTime: 30000,
   });
 
-  // Infinite scroll - sayfa sonuna gelince otomatik yükle
-  useEffect(() => {
-    if (entry?.isIntersecting && hasNextDatabase && !isFetchingNextDatabase && activeTab === 'database') {
-      console.log('🔄 Infinite scroll triggered - loading more...');
-      fetchNextDatabase();
-    }
-  }, [entry?.isIntersecting, hasNextDatabase, isFetchingNextDatabase, fetchNextDatabase, activeTab]);
-
   // Query hooks - External APIs
   const { data: tmdbResults, isLoading: tmdbLoading } = useQuery({
     queryKey: ['tmdb-search', debouncedQuery],
@@ -378,25 +370,65 @@ export default function ExplorePage() {
     enabled: activeTab === 'tmdb'
   });
 
-  // Kitaplar için varsayılan arama terimi
-  const booksSearchTerm = debouncedQuery.length > 2 ? debouncedQuery : 'bestseller';
-  
-  // Kitaplar - basit useQuery ile test
+  // Kitaplar için varsayılan arama terimi - daha kaliteli sonuçlar için
+  const booksSearchTerm = debouncedQuery.length > 2 ? debouncedQuery : 'subject:fiction';
+
+  // Kitaplar - infinite query ile sayfalama
+  const BOOKS_PAGE_SIZE = 20;
   const {
-    data: booksResults,
+    data: booksData,
     isLoading: booksLoading,
     isFetching: isFetchingBooks,
-  } = useQuery({
+    fetchNextPage: fetchNextBooks,
+    hasNextPage: hasNextBooks,
+    isFetchingNextPage: isFetchingNextBooks,
+  } = useInfiniteQuery({
     queryKey: ['books-search', booksSearchTerm, bookSort],
-    queryFn: async () => {
-      console.log('🔍 Kitap araması yapılıyor:', booksSearchTerm, bookSort);
-      const results = await externalApiService.searchGoogleBooks(booksSearchTerm, 0, 40, bookSort);
-      console.log('📚 Kitap sonuçları:', results.length);
-      return results;
+    queryFn: async ({ pageParam = 0 }) => {
+      console.log('🔍 Kitap araması yapılıyor:', booksSearchTerm, 'startIndex:', pageParam, bookSort);
+      const result = await externalApiService.searchGoogleBooks(booksSearchTerm, pageParam, BOOKS_PAGE_SIZE, bookSort);
+      console.log('📚 Kitap sonuçları:', result.items.length, 'toplam:', result.totalItems);
+      return { data: result.items, startIndex: pageParam, totalItems: result.totalItems };
     },
+    getNextPageParam: (lastPage, allPages) => {
+      // totalItems kullanarak doğru pagination
+      const totalFetched = allPages.reduce((acc, page) => acc + page.data.length, 0);
+
+      // Son sayfa boş veya toplam sonuca ulaştıysak dur
+      if (lastPage.data.length === 0 || totalFetched >= lastPage.totalItems) {
+        return undefined;
+      }
+
+      // Google Books API startIndex limiti (~1000)
+      const nextIndex = lastPage.startIndex + BOOKS_PAGE_SIZE;
+      if (nextIndex >= 1000) {
+        return undefined;
+      }
+
+      return nextIndex;
+    },
+    initialPageParam: 0,
     enabled: activeTab === 'books',
-    staleTime: 0,
+    staleTime: 30000,
   });
+
+  // Kitap sonuçlarını düzleştir
+  const booksResults = booksData?.pages.flatMap(page => page.data) ?? [];
+  const booksTotalItems = booksData?.pages[0]?.totalItems ?? 0;
+
+  // Infinite scroll - sayfa sonuna gelince otomatik yükle (database ve books için)
+  // Not: Bu useEffect, tüm query hook'larından SONRA olmalı
+  useEffect(() => {
+    if (entry?.isIntersecting && !isFetchingNextDatabase && !isFetchingNextBooks) {
+      if (activeTab === 'database' && hasNextDatabase) {
+        console.log('🔄 Infinite scroll triggered (database) - loading more...');
+        fetchNextDatabase();
+      } else if (activeTab === 'books' && hasNextBooks) {
+        console.log('🔄 Infinite scroll triggered (books) - loading more...');
+        fetchNextBooks();
+      }
+    }
+  }, [entry?.isIntersecting, hasNextDatabase, hasNextBooks, isFetchingNextDatabase, isFetchingNextBooks, fetchNextDatabase, fetchNextBooks, activeTab]);
 
   // Determine which results to display
   let displayResults: any[] = [];
@@ -407,7 +439,7 @@ export default function ExplorePage() {
     displayResults = databaseData?.pages.flatMap(page => page.data) ?? [];
     isContentLoading = databaseLoading;
     toplamKayit = databaseData?.pages[0]?.toplamKayit ?? 0;
-    
+
     // Debug
     console.log('📊 Database tab - databaseData:', databaseData);
     console.log('📊 displayResults count:', displayResults.length);
@@ -444,7 +476,7 @@ export default function ExplorePage() {
       externalId: book.id
     }));
     isContentLoading = booksLoading || isFetchingBooks;
-    toplamKayit = displayResults.length;
+    toplamKayit = booksTotalItems; // Google Books toplam sonuç sayısı
   }
 
   const handleClearFilters = () => {
@@ -481,8 +513,8 @@ export default function ExplorePage() {
         {/* Arama Kutusu */}
         <TextInput
           placeholder={
-            activeTab === 'database' 
-              ? "Veritabanında ara..." 
+            activeTab === 'database'
+              ? "Veritabanında ara..."
               : activeTab === 'tmdb'
                 ? "TMDB'de film ara..."
                 : "Google Books'ta kitap ara..."
@@ -502,112 +534,112 @@ export default function ExplorePage() {
 
         {/* Filtreler - Only for database tab */}
         {activeTab === 'database' && (
-        <Paper withBorder p="md">
-          <Group justify="space-between" mb={showFilters ? 'md' : 0}>
-            <Button
-              leftSection={<IconFilter size={16} />}
-              variant="light"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              Filtreler {hasFilters && `(${[tur, ...turler, minPuan, maxPuan, minYil, maxYil].filter(Boolean).length})`}
-            </Button>
-            
-            {hasFilters && (
-              <Button variant="subtle" color="red" onClick={handleClearFilters}>
-                Filtreleri Temizle
+          <Paper withBorder p="md">
+            <Group justify="space-between" mb={showFilters ? 'md' : 0}>
+              <Button
+                leftSection={<IconFilter size={16} />}
+                variant="light"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                Filtreler {hasFilters && `(${[tur, ...turler, minPuan, maxPuan, minYil, maxYil].filter(Boolean).length})`}
               </Button>
-            )}
-          </Group>
 
-          <Collapse in={showFilters}>
-            <Grid gutter="md" mt="md">
-              {/* İçerik Türü */}
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <Select
-                  label="İçerik Türü"
-                  placeholder="Seçiniz"
-                  data={[
-                    { value: 'film', label: 'Film' },
-                    { value: 'kitap', label: 'Kitap' },
-                  ]}
-                  value={tur}
-                  onChange={(value) => {
-                    setTur(value as 'film' | 'kitap' | undefined);
-                    setTurler([]); // Tür değişince kategorileri temizle
-                  }}
-                  clearable
-                />
-              </Grid.Col>
+              {hasFilters && (
+                <Button variant="subtle" color="red" onClick={handleClearFilters}>
+                  Filtreleri Temizle
+                </Button>
+              )}
+            </Group>
 
-              {/* Kategori/Tür (Film türleri veya Kitap kategorileri) */}
-              {tur && (
+            <Collapse in={showFilters}>
+              <Grid gutter="md" mt="md">
+                {/* İçerik Türü */}
                 <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
                   <Select
-                    label={tur === 'film' ? 'Film Türü' : 'Kitap Kategorisi'}
+                    label="İçerik Türü"
                     placeholder="Seçiniz"
-                    data={getCurrentTurler()}
-                    value={turler[0] || null}
-                    onChange={(value) => setTurler(value ? [value] : [])}
+                    data={[
+                      { value: 'film', label: 'Film' },
+                      { value: 'kitap', label: 'Kitap' },
+                    ]}
+                    value={tur}
+                    onChange={(value) => {
+                      setTur(value as 'film' | 'kitap' | undefined);
+                      setTurler([]); // Tür değişince kategorileri temizle
+                    }}
                     clearable
-                    searchable
                   />
                 </Grid.Col>
-              )}
 
-              {/* Minimum Puan */}
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <NumberInput
-                  label="Minimum Puan"
-                  placeholder="0"
-                  min={0}
-                  max={10}
-                  step={0.5}
-                  value={minPuan}
-                  onChange={(value) => setMinPuan(value as number | undefined)}
-                  allowDecimal
-                />
-              </Grid.Col>
+                {/* Kategori/Tür (Film türleri veya Kitap kategorileri) */}
+                {tur && (
+                  <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                    <Select
+                      label={tur === 'film' ? 'Film Türü' : 'Kitap Kategorisi'}
+                      placeholder="Seçiniz"
+                      data={getCurrentTurler()}
+                      value={turler[0] || null}
+                      onChange={(value) => setTurler(value ? [value] : [])}
+                      clearable
+                      searchable
+                    />
+                  </Grid.Col>
+                )}
 
-              {/* Maximum Puan */}
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <NumberInput
-                  label="Maximum Puan"
-                  placeholder="10"
-                  min={0}
-                  max={10}
-                  step={0.5}
-                  value={maxPuan}
-                  onChange={(value) => setMaxPuan(value as number | undefined)}
-                  allowDecimal
-                />
-              </Grid.Col>
+                {/* Minimum Puan */}
+                <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                  <NumberInput
+                    label="Minimum Puan"
+                    placeholder="0"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={minPuan}
+                    onChange={(value) => setMinPuan(value as number | undefined)}
+                    allowDecimal
+                  />
+                </Grid.Col>
 
-              {/* Minimum Yıl */}
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <NumberInput
-                  label="Başlangıç Yılı"
-                  placeholder="1900"
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  value={minYil}
-                  onChange={(value) => setMinYil(value as number | undefined)}
-                />
-              </Grid.Col>
+                {/* Maximum Puan */}
+                <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                  <NumberInput
+                    label="Maximum Puan"
+                    placeholder="10"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={maxPuan}
+                    onChange={(value) => setMaxPuan(value as number | undefined)}
+                    allowDecimal
+                  />
+                </Grid.Col>
 
-              {/* Maximum Yıl */}
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <NumberInput
-                  label="Bitiş Yılı"
-                  placeholder={new Date().getFullYear().toString()}
-                  min={1900}
-                  max={new Date().getFullYear()}
-                  value={maxYil}
-                  onChange={(value) => setMaxYil(value as number | undefined)}
-                />
-              </Grid.Col>
-            </Grid>
-          </Collapse>
-        </Paper>
+                {/* Minimum Yıl */}
+                <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                  <NumberInput
+                    label="Başlangıç Yılı"
+                    placeholder="1900"
+                    min={1900}
+                    max={new Date().getFullYear()}
+                    value={minYil}
+                    onChange={(value) => setMinYil(value as number | undefined)}
+                  />
+                </Grid.Col>
+
+                {/* Maximum Yıl */}
+                <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+                  <NumberInput
+                    label="Bitiş Yılı"
+                    placeholder={new Date().getFullYear().toString()}
+                    min={1900}
+                    max={new Date().getFullYear()}
+                    value={maxYil}
+                    onChange={(value) => setMaxYil(value as number | undefined)}
+                  />
+                </Grid.Col>
+              </Grid>
+            </Collapse>
+          </Paper>
         )}
 
         {/* Kitaplar için sıralama seçeneği */}
@@ -649,7 +681,7 @@ export default function ExplorePage() {
         ) : displayResults && displayResults.length > 0 ? (
           <>
             <Text c="dimmed">
-              {activeTab === 'database' 
+              {activeTab === 'database'
                 ? `${displayResults.length} / ${toplamKayit} içerik gösteriliyor`
                 : `${displayResults.length} sonuç bulundu`
               }
@@ -662,8 +694,8 @@ export default function ExplorePage() {
                     padding="lg"
                     radius="md"
                     withBorder
-                    style={{ 
-                      cursor: importingId === icerik.externalId ? 'wait' : 'pointer', 
+                    style={{
+                      cursor: importingId === icerik.externalId ? 'wait' : 'pointer',
                       height: '100%',
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                       position: 'relative',
@@ -716,12 +748,12 @@ export default function ExplorePage() {
                       {/* İkili Puan Gösterimi - Her zaman ikisi de gösterilir */}
                       <Stack gap={4}>
                         {/* Harici Puan (TMDB/Google) */}
-                        <Tooltip 
-                          label={icerik.tur === 'kitap' ? 'Google Books Puanı' : 'TMDB Puanı'} 
+                        <Tooltip
+                          label={icerik.tur === 'kitap' ? 'Google Books Puanı' : 'TMDB Puanı'}
                           position="top"
                         >
                           <Badge size="sm" color="orange" variant="filled" leftSection={<IconStar size={12} />}>
-                            {icerik.isExternal 
+                            {icerik.isExternal
                               ? (icerik.hariciPuan ?? icerik.ortalamaPuan ?? 0).toFixed(1)
                               : (icerik.hariciPuan ?? 0) > 0 ? icerik.hariciPuan.toFixed(1) : '-'
                             } {icerik.tur === 'kitap' ? 'Google' : 'TMDB'}
@@ -730,8 +762,8 @@ export default function ExplorePage() {
                         {/* Platform Puanı (SAGA) - Her zaman göster */}
                         <Tooltip label="SAGA Puanı" position="top">
                           <Badge size="sm" color="blue" variant="filled" leftSection={<IconStar size={12} />}>
-                            {icerik.isExternal 
-                              ? '-' 
+                            {icerik.isExternal
+                              ? '-'
                               : (icerik.ortalamaPuan ?? 0) > 0 ? icerik.ortalamaPuan.toFixed(1) : '-'
                             } SAGA
                           </Badge>
@@ -748,20 +780,21 @@ export default function ExplorePage() {
                 </Grid.Col>
               ))}
             </Grid>
-            
+
             {/* Infinite scroll trigger - sayfa sonuna gelince otomatik yükler */}
-            {activeTab === 'database' && (
+            {(activeTab === 'database' || activeTab === 'books') && (
               <div ref={loadMoreRef} style={{ height: 20, marginTop: 20 }}>
-                {isFetchingNextDatabase && (
+                {(isFetchingNextDatabase || isFetchingNextBooks) && (
                   <Center>
                     <Loader size="md" />
                   </Center>
                 )}
-                {hasNextDatabase && !isFetchingNextDatabase && (
-                  <Center>
-                    <Text c="dimmed" size="sm">Daha fazla içerik için aşağı kaydırın...</Text>
-                  </Center>
-                )}
+                {((activeTab === 'database' && hasNextDatabase) || (activeTab === 'books' && hasNextBooks)) &&
+                  !isFetchingNextDatabase && !isFetchingNextBooks && (
+                    <Center>
+                      <Text c="dimmed" size="sm">Daha fazla içerik için aşağı kaydırın...</Text>
+                    </Center>
+                  )}
               </div>
             )}
           </>
@@ -772,7 +805,7 @@ export default function ExplorePage() {
             description={isSearching ? 'Farklı bir arama terimi deneyin' : 'Filtreleri değiştirmeyi deneyin'}
           />
         ) : (
-           // Should not happen with default load, but fallback
+          // Should not happen with default load, but fallback
           <EmptyState
             icon={<IconSearch size={48} stroke={1.5} color="gray" />}
             title="İçerik Bulunamadı"

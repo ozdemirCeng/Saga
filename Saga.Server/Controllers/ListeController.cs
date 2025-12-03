@@ -366,8 +366,10 @@ namespace Saga.Server.Controllers
                     return Forbid();
                 }
 
-                // İçerik zaten listede mi?
-                if (liste.Icerikler.Any(li => li.IcerikId == dto.IcerikId))
+                // İçerik zaten listede mi? (AnyAsync ile optimize edildi)
+                var icerikListedeMi = await _context.ListeIcerikleri
+                    .AnyAsync(li => li.ListeId == id && li.IcerikId == dto.IcerikId);
+                if (icerikListedeMi)
                 {
                     return Conflict(new { message = "Bu içerik zaten listede mevcut." });
                 }
@@ -396,8 +398,8 @@ namespace Saga.Server.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Aktivite kaydı
-                await CreateListeIcerikAktivite(kullaniciId, id, dto.IcerikId);
+                // NOT: Aktivite kaydı artık veritabanı trigger'ı (trg_akt_liste) tarafından yapılıyor.
+                // Çifte kayıt sorununu önlemek için CreateListeIcerikAktivite çağrısı kaldırıldı.
 
                 return Ok(new { message = "İçerik listeye eklendi.", icerikSayisi = liste.IcerikSayisi });
             }
@@ -604,24 +606,7 @@ namespace Saga.Server.Controllers
         }
 
         // Helper Methods BaseApiController'dan gelmektedir.
-        private async Task CreateAktivite(Guid kullaniciId, long listeId)
-        {
-            // Bu metod artık kullanılmıyor, manuel aktivite oluşturma kaldırıldı.
-        }
-
-        private async Task CreateListeIcerikAktivite(Guid kullaniciId, long listeId, long icerikId)
-        {
-            var aktivite = new Aktivite
-            {
-                KullaniciId = kullaniciId,
-                AktiviteTuru = AktiviteTuru.listeye_ekleme,
-                ListeId = listeId,
-                IcerikId = icerikId,
-                OlusturulmaZamani = DateTime.UtcNow
-            };
-
-            _context.Aktiviteler.Add(aktivite);
-            await _context.SaveChangesAsync();
-        }
+        // CreateAktivite ve CreateListeIcerikAktivite metodları artık kullanılmıyor;
+        // Liste aktiviteleri veritabanı trigger'ı (trg_akt_liste) ile oluşturuluyor.
     }
 }

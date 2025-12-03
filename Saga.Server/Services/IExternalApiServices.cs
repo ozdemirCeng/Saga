@@ -23,8 +23,15 @@ namespace Saga.Server.Services
     public interface IGoogleBooksService
     {
         Task<GoogleBookDto?> GetBookByIdAsync(string googleBooksId);
-        Task<List<GoogleBookDto>> SearchBooksAsync(string query, int startIndex = 0, int maxResults = 20, string? orderBy = null);
+        Task<GoogleBooksSearchResult> SearchBooksAsync(string query, int startIndex = 0, int maxResults = 20, string? orderBy = null, string? langRestrict = null, string? filter = null);
         Task<Icerik?> ImportBookAsync(string googleBooksId);
+    }
+
+    // Google Books Arama Sonucu (totalItems ile birlikte)
+    public class GoogleBooksSearchResult
+    {
+        public List<GoogleBookDto> Items { get; set; } = new();
+        public int TotalItems { get; set; }
     }
 
     // TMDB Film/Dizi DTO

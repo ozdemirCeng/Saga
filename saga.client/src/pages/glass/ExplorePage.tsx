@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Film, BookOpen, Star, Loader2, X, Tv, TrendingUp, Clock, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
-import { externalApi } from '../../services/api';
+import { Search, Film, BookOpen, Star, Loader2, X, Tv, TrendingUp, Clock, Calendar, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { externalApi, icerikApi } from '../../services/api';
 import type { TmdbFilm, GoogleBook } from '../../services/api';
+import bookQueriesConfig from '../../config/bookQueries.json';
 
 // ============================================
 // NEBULA UI COMPONENTS
@@ -140,8 +141,12 @@ interface FilterPanelProps {
   tmdbSort: 'popular' | 'top_rated' | 'trending' | 'now_playing';
   onTmdbSortChange: (sort: 'popular' | 'top_rated' | 'trending' | 'now_playing') => void;
   // Kitap filtreleri
-  bookSort: 'relevance' | 'newest';
-  onBookSortChange: (sort: 'relevance' | 'newest') => void;
+  bookCategory: string;
+  bookCategories: { value: string; label: string; queryEn: string; queryTr: string }[];
+  onBookCategoryChange: (category: string) => void;
+  bookLang: string;
+  bookLanguages: { value: string; label: string }[];
+  onBookLangChange: (lang: string) => void;
   // Ortak filtreler
   minYear: number | null;
   maxYear: number | null;
@@ -161,8 +166,12 @@ function FilterPanel({
   onTmdbFilterChange,
   tmdbSort,
   onTmdbSortChange,
-  bookSort,
-  onBookSortChange,
+  bookCategory,
+  bookCategories,
+  onBookCategoryChange,
+  bookLang,
+  bookLanguages,
+  onBookLangChange,
   minYear,
   maxYear,
   minPuan,
@@ -177,6 +186,7 @@ function FilterPanel({
   const [showGenres, setShowGenres] = useState(true);
   const [showYearFilter, setShowYearFilter] = useState(true);
   const [showRatingFilter, setShowRatingFilter] = useState(true);
+  const [showBookCategories, setShowBookCategories] = useState(true);
   
   // Aktif tab'a göre tür listesi
   // "Tümü" seçiliyken sadece ortak türleri göster
@@ -300,28 +310,62 @@ function FilterPanel({
 
         {/* Kitap Tab Filtreleri */}
         {activeTab === 'kitaplar' && (
-          <div className="glass-panel p-4 space-y-3">
-            <p className="text-xs text-[#8E8E93] uppercase tracking-wider font-medium">Sıralama</p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'relevance', label: 'En İlgili', icon: <Star size={12} /> },
-                { id: 'newest', label: 'En Yeni', icon: <Clock size={12} /> },
-              ].map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => onBookSortChange(s.id as any)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    bookSort === s.id
-                      ? 'bg-[#00b894] text-white'
-                      : 'bg-white/5 text-[#8E8E93] hover:bg-white/10'
-                  }`}
-                >
-                  {s.icon}
-                  {s.label}
-                </button>
-              ))}
+          <>
+            {/* Kitap Kategorileri */}
+            <div className="glass-panel p-4 space-y-3">
+              <button
+                onClick={() => setShowBookCategories(!showBookCategories)}
+                className="w-full flex items-center justify-between text-xs text-[#8E8E93] uppercase tracking-wider font-medium"
+              >
+                <span className="flex items-center gap-2">
+                  <BookOpen size={12} className="text-[#00b894]" />
+                  Kategori
+                </span>
+                {showBookCategories ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showBookCategories && (
+                <div className="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
+                  {bookCategories.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => onBookCategoryChange(cat.value)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                        bookCategory === cat.value
+                          ? 'bg-[#00b894] text-white'
+                          : 'bg-white/5 text-[#8E8E93] hover:bg-white/10'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+            
+            {/* Sıralama */}
+            {/* Dil Filtresi */}
+            <div className="glass-panel p-4 space-y-3">
+              <p className="text-xs text-[#8E8E93] uppercase tracking-wider font-medium flex items-center gap-2">
+                <Globe size={12} className="text-[#fd79a8]" />
+                Dil
+              </p>
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+                {bookLanguages.map((lang) => (
+                  <button
+                    key={lang.value}
+                    onClick={() => onBookLangChange(lang.value)}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                      bookLang === lang.value
+                        ? 'bg-[#fd79a8] text-white'
+                        : 'bg-white/5 text-[#8E8E93] hover:bg-white/10'
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Yıl Filtresi - Tüm tablar için */}
@@ -445,12 +489,17 @@ interface ExternalCardProps {
   type: 'film' | 'kitap' | 'tv';
   onImport: () => void;
   importing?: boolean;
+  dbId?: number; // Veritabanından gelen içerik için ID
+  onNavigate?: (id: number) => void; // Veritabanı içeriğine tıklama
 }
 
-function ExternalCard({ item, type, onImport, importing }: ExternalCardProps) {
+function ExternalCard({ item, type, onImport, importing, dbId, onNavigate }: ExternalCardProps) {
   const isTmdb = type === 'film' || type === 'tv';
   const film = item as TmdbFilm;
   const book = item as GoogleBook;
+  
+  // Veritabanından gelen içerik mi?
+  const isDbItem = dbId !== undefined;
 
   // Backend Türkçe alan adları kullanıyor (posterUrl, baslik, puan)
   // HTTP URL'leri HTTPS'e çevir
@@ -476,7 +525,10 @@ function ExternalCard({ item, type, onImport, importing }: ExternalCardProps) {
   const displayType = mediaType === 'tv' ? 'Dizi' : mediaType === 'movie' ? 'Film' : type === 'kitap' ? 'Kitap' : 'Film';
 
   return (
-    <div className="group">
+    <div 
+      className={`group ${isDbItem ? 'cursor-pointer' : ''}`}
+      onClick={isDbItem && dbId && onNavigate ? () => onNavigate(dbId) : undefined}
+    >
       <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 bg-white/5">
         {posterUrl ? (
           <img
@@ -501,25 +553,28 @@ function ExternalCard({ item, type, onImport, importing }: ExternalCardProps) {
             <span className="text-xs text-white font-semibold">{rating.toFixed(1)}</span>
           </div>
         )}
+
         {/* Media type badge */}
         {isTmdb && mediaType === 'tv' && (
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#00CEC9]/80 text-white text-xs font-medium">
             Dizi
           </div>
         )}
-        {/* Import overlay */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <NebulaButton
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onImport();
-            }}
-            disabled={importing}
-          >
-            {importing ? <Loader2 size={14} className="animate-spin" /> : 'Ekle'}
-          </NebulaButton>
-        </div>
+        {/* Import overlay - sadece harici içerikler için */}
+        {!isDbItem && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <NebulaButton
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onImport();
+              }}
+              disabled={importing}
+            >
+              {importing ? <Loader2 size={14} className="animate-spin" /> : 'Ekle'}
+            </NebulaButton>
+          </div>
+        )}
       </div>
       <h3 className="font-medium text-white text-sm line-clamp-2">{title}</h3>
       <div className="flex items-center gap-2 mt-1">
@@ -555,6 +610,29 @@ function ContentSkeleton() {
 // HELPER FUNCTIONS
 // ============================================
 
+// HTML taglarını temizleyen yardımcı fonksiyon
+// Google Books API bazen <b>, <p>, <i> gibi HTML tagları döndürüyor
+function stripHtmlTags(html: string | undefined | null): string {
+  if (!html) return '';
+  // <br> ve </p> taglarını satır sonuna çevir (paragraf geçişleri için)
+  let text = html.replace(/<br\s*\/?>/gi, '\n')
+                 .replace(/<\/p>/gi, '\n');
+  // Diğer HTML taglarını kaldır
+  text = text.replace(/<[^>]*>/g, '');
+  // HTML entities'i decode et
+  text = text.replace(/&amp;/g, '&')
+             .replace(/&lt;/g, '<')
+             .replace(/&gt;/g, '>')
+             .replace(/&quot;/g, '"')
+             .replace(/&#39;/g, "'")
+             .replace(/&nbsp;/g, ' ');
+  // Birden fazla satır sonunu tek satır sonuna çevir
+  text = text.replace(/\n{3,}/g, '\n\n');
+  // Satır başı/sonu boşlukları temizle
+  text = text.split('\n').map(line => line.trim()).join('\n').trim();
+  return text;
+}
+
 // Yayın tarihini yıla çeviren yardımcı fonksiyon
 // "2023", "2023-05", "2023-05-15" formatlarını destekler
 function parseYearFromDate(dateStr: string | undefined): number {
@@ -575,54 +653,198 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // URL'den state'leri oku (sayfa geri dönüşünde korunması için)
+  const initialTab = (searchParams.get('tab') as 'tmdb' | 'kitaplar') || 'tmdb';
+  const initialQuery = searchParams.get('q') || '';
+  const initialTmdbFilter = (searchParams.get('tmdbFilter') as 'all' | 'movie' | 'tv') || 'all';
+  const initialTmdbSort = (searchParams.get('tmdbSort') as 'popular' | 'top_rated' | 'trending' | 'now_playing') || 'popular';
+  const initialBookLang = searchParams.get('bookLang') || '';
+  const initialBookCategory = searchParams.get('bookCategory') || 'all';
+  const initialMinYear = searchParams.get('minYear') ? parseInt(searchParams.get('minYear')!) : null;
+  const initialMaxYear = searchParams.get('maxYear') ? parseInt(searchParams.get('maxYear')!) : null;
+  const initialMinPuan = searchParams.get('minPuan') ? parseInt(searchParams.get('minPuan')!) : null;
+
   // States
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [activeTab, setActiveTab] = useState<'tmdb' | 'kitaplar'>(
-    (searchParams.get('tab') as any) || 'tmdb'
-  );
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [activeTab, setActiveTab] = useState<'tmdb' | 'kitaplar'>(initialTab);
 
   // TMDB filters
-  const [tmdbFilter, setTmdbFilter] = useState<'all' | 'movie' | 'tv'>('all');
-  const [tmdbSort, setTmdbSort] = useState<'popular' | 'top_rated' | 'trending' | 'now_playing'>('popular');
+  const [tmdbFilter, setTmdbFilter] = useState<'all' | 'movie' | 'tv'>(initialTmdbFilter);
+  const [tmdbSort, setTmdbSort] = useState<'popular' | 'top_rated' | 'trending' | 'now_playing'>(initialTmdbSort);
   const [tmdbPage, setTmdbPage] = useState(1);
   const [tmdbHasMore, setTmdbHasMore] = useState(true);
   const [tmdbLoadingMore, setTmdbLoadingMore] = useState(false);
   const tmdbLoadingRef = useRef(false);
 
   // Kitap filters
-  const [bookSort, setBookSort] = useState<'relevance' | 'newest'>('relevance');
+  const [bookLang, setBookLang] = useState<string>(initialBookLang);
   const [bookStartIndex, setBookStartIndex] = useState(0);
   const [bookHasMore, setBookHasMore] = useState(true);
   const [bookLoadingMore, setBookLoadingMore] = useState(false);
   const [bookDataLoaded, setBookDataLoaded] = useState(false);
-  const [bookError, setBookError] = useState(false);
+  
+  // Arama için ayrı state'ler (infinite scroll)
+  const [searchStartIndex, setSearchStartIndex] = useState(0);
+  const [searchHasMore, setSearchHasMore] = useState(true);
+  const searchSeenIds = useRef(new Set<string>());
+  
+  // Dil seçenekleri - Sadece güvenilir çalışan diller
+  // Google Books API'nin langRestrict parametresi bazı dillerde hatalı sonuç veriyor
+  const bookLanguages = [
+    { value: '', label: '🌍 Tüm Diller' },
+    { value: 'tr', label: '🇹🇷 Türkçe' },
+    { value: 'en', label: '🇬🇧 İngilizce' },
+  ];
+  
+  // Görüntülenen kitap ID'lerini takip et (güçlü duplicate kontrolü)
+  const seenBookIds = useRef(new Set<string>());
+  // Son istenen startIndex ve queryIndex'i takip et (duplicate request önleme)
+  const lastRequestedKey = useRef<string>('');
+  
+  // ============================================
+  // GOOGLE BOOKS API STRATEJİSİ - JSON CONFIG
+  // ============================================
+  // Sorgular bookQueries.json dosyasından okunuyor
+  const turkishPublishers = bookQueriesConfig.turkishPublishers;
+  const turkishAuthorQueries = bookQueriesConfig.turkishAuthors;
+  const internationalPublishers = bookQueriesConfig.internationalPublishers;
+  const universalGenreQueries = bookQueriesConfig.universalGenres;
+  
+  // Aktif sorgu listesi - dil seçimine göre (useMemo ile cache'le)
+  const allCategoryQueries = useMemo(() => {
+    if (bookLang === 'tr') {
+      return [...turkishPublishers, ...turkishAuthorQueries, ...universalGenreQueries];
+    }
+    if (bookLang === 'en') {
+      return [...internationalPublishers, ...universalGenreQueries];
+    }
+    // Tüm diller - TR ve EN sorgularını karışık (interleaved) sırala
+    // Böylece hem Türkçe hem İngilizce kitaplar dengeli gelir
+    const trQueries = [...turkishPublishers, ...turkishAuthorQueries];
+    const enQueries = [...internationalPublishers, ...universalGenreQueries];
+    const interleaved: string[] = [];
+    const maxLen = Math.max(trQueries.length, enQueries.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < trQueries.length) interleaved.push(trQueries[i]);
+      if (i < enQueries.length) interleaved.push(enQueries[i]);
+    }
+    return interleaved;
+  }, [bookLang, turkishPublishers, turkishAuthorQueries, internationalPublishers, universalGenreQueries]);
+  const [allQueryIndex, setAllQueryIndex] = useState(0);
+  
+  // Kitap kategori filtreleri - JSON'dan oku
+  const bookCategories = Object.entries(bookQueriesConfig.categories).map(([value, data]) => ({
+    value,
+    label: data.labelTr,
+    queryEn: data.queryEn,
+    queryTr: data.queryTr,
+  }));
+  const [bookCategory, setBookCategory] = useState(initialBookCategory);
 
   // Advanced filter states
-  const [minYear, setMinYear] = useState<number | null>(null);
-  const [maxYear, setMaxYear] = useState<number | null>(null);
-  const [minPuan, setMinPuan] = useState<number | null>(null);
+  const [minYear, setMinYear] = useState<number | null>(initialMinYear);
+  const [maxYear, setMaxYear] = useState<number | null>(initialMaxYear);
+  const [minPuan, setMinPuan] = useState<number | null>(initialMinPuan);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [appliedFilters, setAppliedFilters] = useState({ 
-    minYear: null as number | null, 
-    maxYear: null as number | null, 
-    minPuan: null as number | null,
+    minYear: initialMinYear, 
+    maxYear: initialMaxYear, 
+    minPuan: initialMinPuan,
     genres: [] as number[]
   });
 
-  // Data states
-  const [tmdbResults, setTmdbResults] = useState<TmdbFilm[]>([]);
-  const [bookResults, setBookResults] = useState<GoogleBook[]>([]);
+  // Session storage'dan cache'lenmiş sonuçları oku
+  const getCachedResults = () => {
+    try {
+      const cached = sessionStorage.getItem('explorePageCache');
+      if (cached) {
+        const data = JSON.parse(cached);
+        // Cache key kontrolü - aynı filtrelerle mi?
+        const currentKey = `${activeTab}-${bookLang}-${bookCategory}-${initialMinYear}-${initialMaxYear}-${initialMinPuan}`;
+        if (data.key === currentKey) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.error('Cache okuma hatası:', e);
+    }
+    return null;
+  };
+
+  const cachedData = getCachedResults();
+
+  // Data states - cache'den veya boş başlat
+  const [tmdbResults, setTmdbResults] = useState<TmdbFilm[]>(cachedData?.tmdbResults || []);
+  const [bookResults, setBookResults] = useState<GoogleBook[]>(cachedData?.bookResults || []);
+  
+  // Cache'den veri geldiyse başlangıç değerlerini ayarla
+  const hasCache = cachedData !== null && (cachedData.bookResults?.length > 0 || cachedData.tmdbResults?.length > 0);
+  
+  // Cache'den gelen scroll pozisyonunu kullan
+  useEffect(() => {
+    if (cachedData?.scrollY) {
+      setTimeout(() => {
+        window.scrollTo(0, cachedData.scrollY);
+      }, 100);
+    }
+  }, []); // Sadece mount'ta çalış
+
+  // Sonuçları cache'le (sayfa terk edilirken)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const cacheKey = `${activeTab}-${bookLang}-${bookCategory}-${appliedFilters.minYear}-${appliedFilters.maxYear}-${appliedFilters.minPuan}`;
+      const cacheData = {
+        key: cacheKey,
+        tmdbResults,
+        bookResults,
+        bookStartIndex,
+        scrollY: window.scrollY,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('explorePageCache', JSON.stringify(cacheData));
+    };
+    
+    // Sayfa terk edilirken veya navigate edilirken cache'le
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Component unmount olurken cache'le (navigate için)
+      handleBeforeUnload();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [activeTab, bookLang, bookCategory, appliedFilters, tmdbResults, bookResults, bookStartIndex]);
 
   // Loading states
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
 
-  // Filter helper - filtre uygulama
+  // Filter helper - filtre uygulama (hem TMDB hem Kitaplar için)
   const applyFilters = () => {
+    // Filtreler değişmediyse hiçbir şey yapma
+    const filtersChanged = 
+      appliedFilters.minYear !== minYear ||
+      appliedFilters.maxYear !== maxYear ||
+      appliedFilters.minPuan !== minPuan ||
+      JSON.stringify(appliedFilters.genres) !== JSON.stringify(selectedGenres);
+    
+    if (!filtersChanged) {
+      console.log('📋 Filtreler değişmedi, işlem atlanıyor');
+      return;
+    }
+    
     setAppliedFilters({ minYear, maxYear, minPuan, genres: selectedGenres });
+    // TMDB için
     setTmdbPage(1);
     setTmdbResults([]);
     setTmdbHasMore(true);
+    // Kitaplar için
+    setBookStartIndex(0);
+    setAllQueryIndex(0);
+    setBookResults([]);
+    seenBookIds.current.clear();
+    lastRequestedKey.current = ''; // Cache key'i sıfırla
+    setBookHasMore(true);
+    setBookDataLoaded(false);
   };
 
   const resetFilters = () => {
@@ -631,9 +853,17 @@ export default function ExplorePage() {
     setMinPuan(null);
     setSelectedGenres([]);
     setAppliedFilters({ minYear: null, maxYear: null, minPuan: null, genres: [] });
+    // TMDB için
     setTmdbPage(1);
     setTmdbResults([]);
     setTmdbHasMore(true);
+    // Kitaplar için
+    setBookStartIndex(0);
+    setAllQueryIndex(0);
+    setBookResults([]);
+    seenBookIds.current.clear();
+    setBookHasMore(true);
+    setBookDataLoaded(false);
   };
 
   // TMDB filter/sort değiştiğinde state'leri sıfırla
@@ -653,16 +883,53 @@ export default function ExplorePage() {
     setTmdbHasMore(true);
   };
 
-  // Kitap sort değiştiğinde state'leri sıfırla
-  const handleBookSortChange = (sort: 'relevance' | 'newest') => {
-    if (sort === bookSort) return;
-    setBookSort(sort);
+  // Kitap kategori değiştiğinde state'leri sıfırla
+  const handleBookCategoryChange = (category: string) => {
+    if (category === bookCategory) return;
+    setBookCategory(category);
     setBookStartIndex(0);
+    setAllQueryIndex(0); // Harf/kelime rotasyonunu sıfırla
     setBookResults([]);
+    seenBookIds.current.clear(); // Görüntülenen ID'leri temizle
+    lastRequestedKey.current = ''; // Request tracker'ı sıfırla
     setBookHasMore(true);
     setBookDataLoaded(false);
-    setBookError(false);
   };
+  
+  // Kitap dil değiştiğinde state'leri sıfırla
+  const handleBookLangChange = (lang: string) => {
+    if (lang === bookLang) return;
+    setBookLang(lang);
+    setBookStartIndex(0);
+    setAllQueryIndex(0);
+    setBookResults([]);
+    seenBookIds.current.clear();
+    lastRequestedKey.current = ''; // Request tracker'ı sıfırla
+    setBookHasMore(true);
+    setBookDataLoaded(false);
+  };
+
+  // Puan filtresi değiştiğinde - "Tümü" seçilirse hemen uygula
+  const handleMinPuanChange = (puan: number | null) => {
+    setMinPuan(puan);
+    
+    // "Tümü" (null) seçildiğinde hemen filtreyi kaldır ve verileri yeniden yükle
+    if (puan === null && appliedFilters.minPuan !== null) {
+      setAppliedFilters(prev => ({ ...prev, minPuan: null }));
+      // Kitaplar için state'leri sıfırla
+      setBookStartIndex(0);
+      setAllQueryIndex(0);
+      setBookResults([]);
+      seenBookIds.current.clear();
+      lastRequestedKey.current = '';
+      setBookHasMore(true);
+      setBookDataLoaded(false);
+    }
+  };
+
+  // Rate limit retry sayacı (maksimum 3 deneme)
+  const rateLimitRetryCount = useRef(0);
+  const MAX_RATE_LIMIT_RETRIES = 3;
 
   // TMDB verilerini yükle - useRef ile fonksiyon referansını sabit tut
   const tmdbParamsRef = useRef({ tmdbFilter, tmdbSort, appliedFilters, searchQuery });
@@ -671,17 +938,38 @@ export default function ExplorePage() {
   const tmdbResultsRef = useRef<TmdbFilm[]>([]);
   tmdbResultsRef.current = tmdbResults;
 
-  // Arama fonksiyonu
+  // Arama fonksiyonu - ilk sayfa için
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
-      setBookResults([]);
-      if (activeTab !== 'tmdb') {
+      // Arama temizlendiğinde normal keşfet moduna dön
+      setSearchStartIndex(0);
+      setSearchHasMore(true);
+      searchSeenIds.current.clear();
+      
+      // Kitaplar sekmesindeyse keşfet verilerini yeniden yükle
+      if (activeTab === 'kitaplar') {
+        setBookResults([]);
+        seenBookIds.current.clear();
+        setBookStartIndex(0);
+        setAllQueryIndex(0);
+        setBookDataLoaded(false); // Bu sayede loadBooksData tetiklenecek
+        lastRequestedKey.current = '';
+      }
+      // TMDB sekmesindeyse tmdb verilerini yeniden yükle
+      if (activeTab === 'tmdb') {
         setTmdbResults([]);
+        setTmdbPage(1);
+        tmdbDataLoadedRef.current = false;
       }
       return;
     }
 
+    // Arama değiştiğinde state'leri sıfırla
+    setSearchStartIndex(0);
+    setSearchHasMore(true);
+    searchSeenIds.current.clear();
     setLoading(true);
+    
     try {
       if (activeTab === 'tmdb') {
         let results: TmdbFilm[];
@@ -694,25 +982,191 @@ export default function ExplorePage() {
         }
         setTmdbResults(results);
       } else if (activeTab === 'kitaplar') {
-        const results = await externalApi.searchBooks(searchQuery, 0, 40, bookSort);
+        // API'ye her zaman relevance gönder
+        const langParam = bookLang || undefined;
+        const response = await externalApi.searchBooks(searchQuery, 0, 40, 'relevance', langParam);
+        let results = response.items || [];
         
-        // "En Yeni" seçiliyse, yayın yılına göre sırala
-        if (bookSort === 'newest' && results.length > 0) {
-          results.sort((a, b) => {
-            const yearA = parseYearFromDate(a.yayinTarihi);
-            const yearB = parseYearFromDate(b.yayinTarihi);
-            return yearB - yearA; // En yeniden en eskiye
+        // HTML taglarını tüm açıklamalardan temizle
+        results = results.map((book: GoogleBook) => ({
+          ...book,
+          aciklama: stripHtmlTags(book.aciklama),
+          description: stripHtmlTags(book.description),
+        }));
+        
+        // Kalite filtresi - kapağı olmayanları çıkar
+        results = results.filter((book: GoogleBook) => {
+          const hasCover = book.posterUrl || book.thumbnail;
+          if (!hasCover) return false;
+          const title = book.baslik || book.title;
+          if (!title || title.trim().length < 2) return false;
+          return true;
+        });
+        
+        // CLIENT-SIDE DİL FİLTRELEMESİ (arama için de)
+        if (bookLang) {
+          results = results.filter((book: GoogleBook) => {
+            const bookLanguage = book.dil || book.language || '';
+            return bookLanguage === bookLang;
           });
         }
         
+        // Yıl filtresi uygula (appliedFilters)
+        // Aralıktaki kitaplar + tarihi bilinmeyenler gösterilsin, aralık dışındakiler çıkarılsın
+        if (appliedFilters.minYear || appliedFilters.maxYear) {
+          const minY = appliedFilters.minYear ? parseInt(String(appliedFilters.minYear), 10) : 0;
+          const maxY = appliedFilters.maxYear ? parseInt(String(appliedFilters.maxYear), 10) : 9999;
+          
+          console.log(`📅 Yıl filtresi: ${minY} - ${maxY}`);
+          
+          const inRange: GoogleBook[] = [];
+          const noDate: GoogleBook[] = [];
+          
+          results.forEach((book: GoogleBook) => {
+            const year = parseYearFromDate(book.yayinTarihi || book.publishedDate);
+            console.log(`  - "${book.baslik || book.title}": yıl=${year}`);
+            if (year === 0) {
+              noDate.push(book); // Tarihi bilinmeyenler en sona
+            } else if (year >= minY && year <= maxY) {
+              inRange.push(book); // Aralıktakiler
+            }
+            // Aralık dışındakiler çıkarılıyor (dahil edilmiyor)
+          });
+          
+          console.log(`  ✅ Aralıkta: ${inRange.length}, Tarihsiz: ${noDate.length}`);
+          
+          // Önce aralıktakiler, sonra tarihi bilinmeyenler
+          results = [...inRange, ...noDate];
+        }
+        
+        // Puan filtresi uygula (kitaplar için ortalamaPuan/averageRating)
+        if (appliedFilters.minPuan) {
+          results = results.filter((book: GoogleBook) => {
+            const rating = book.ortalamaPuan || book.averageRating || 0;
+            // Google Books 5 üzerinden, biz 10 üzerinden gösteriyoruz
+            const rating10 = rating * 2;
+            return rating10 >= appliedFilters.minPuan!;
+          });
+        }
+        
+        // Duplicate kontrolü
+        results = results.filter((book: GoogleBook) => {
+          if (searchSeenIds.current.has(book.id)) return false;
+          searchSeenIds.current.add(book.id);
+          return true;
+        });
+        
         setBookResults(results);
+        // API'den sonuç geldiyse ve limit (1000) aşılmadıysa devam et
+        // Google Books API maksimum startIndex=1000 destekler
+        setSearchHasMore(true); // İlk sayfada her zaman devam et
       }
     } catch (err) {
       console.error('Arama hatası:', err);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, activeTab, tmdbFilter, bookSort]);
+  }, [searchQuery, activeTab, tmdbFilter, appliedFilters.minYear, appliedFilters.maxYear]);
+
+  // Arama için daha fazla sonuç yükle (infinite scroll)
+  const loadMoreSearchResults = useCallback(async () => {
+    if (!searchQuery.trim() || !searchHasMore || bookLoadingMore) return;
+    
+    const newStartIndex = searchStartIndex + 40;
+    setBookLoadingMore(true);
+    
+    try {
+      const langParam = bookLang || undefined;
+      const response = await externalApi.searchBooks(searchQuery, newStartIndex, 40, 'relevance', langParam);
+      let results = response.items || [];
+      
+      // HTML taglarını temizle
+      results = results.map((book: GoogleBook) => ({
+        ...book,
+        aciklama: stripHtmlTags(book.aciklama),
+        description: stripHtmlTags(book.description),
+      }));
+      
+      // Kalite filtresi
+      results = results.filter((book: GoogleBook) => {
+        const hasCover = book.posterUrl || book.thumbnail;
+        if (!hasCover) return false;
+        const title = book.baslik || book.title;
+        if (!title || title.trim().length < 2) return false;
+        return true;
+      });
+      
+      // CLIENT-SIDE DİL FİLTRELEMESİ
+      if (bookLang) {
+        results = results.filter((book: GoogleBook) => {
+          const bookLanguage = book.dil || book.language || '';
+          return bookLanguage === bookLang;
+        });
+      }
+      
+      // Yıl filtresi uygula (appliedFilters)
+      // Aralıktaki kitaplar + tarihi bilinmeyenler gösterilsin, aralık dışındakiler çıkarılsın
+      if (appliedFilters.minYear || appliedFilters.maxYear) {
+        const minY = appliedFilters.minYear ? parseInt(String(appliedFilters.minYear), 10) : 0;
+        const maxY = appliedFilters.maxYear ? parseInt(String(appliedFilters.maxYear), 10) : 9999;
+        
+        const inRange: GoogleBook[] = [];
+        const noDate: GoogleBook[] = [];
+        
+        results.forEach((book: GoogleBook) => {
+          const year = parseYearFromDate(book.yayinTarihi || book.publishedDate);
+          if (year === 0) {
+            noDate.push(book);
+          } else if (year >= minY && year <= maxY) {
+            inRange.push(book);
+          }
+        });
+        
+        results = [...inRange, ...noDate];
+      }
+      
+      // Puan filtresi uygula
+      if (appliedFilters.minPuan) {
+        results = results.filter((book: GoogleBook) => {
+          const rating = book.ortalamaPuan || book.averageRating || 0;
+          const rating10 = rating * 2;
+          return rating10 >= appliedFilters.minPuan!;
+        });
+      }
+      
+      // Duplicate kontrolü
+      const uniqueResults = results.filter((book: GoogleBook) => {
+        if (searchSeenIds.current.has(book.id)) return false;
+        searchSeenIds.current.add(book.id);
+        return true;
+      });
+      
+      if (uniqueResults.length > 0) {
+        // Yeni sonuçları ekle
+        setBookResults(prev => {
+          // Ek duplicate kontrolü - prev'de zaten varsa ekleme
+          const existingIds = new Set(prev.map(b => b.id));
+          const trulyUnique = uniqueResults.filter(b => !existingIds.has(b.id));
+          if (trulyUnique.length === 0) return prev; // Değişiklik yoksa aynı referansı döndür
+          
+          return [...prev, ...trulyUnique];
+        });
+        setSearchStartIndex(newStartIndex);
+      }
+      
+      // API'den hiç sonuç gelmediyse veya startIndex 960'ı geçtiyse (API limiti 1000) dur
+      // response.items boş geldiyse artık sonuç yok demektir
+      const apiHasMore = results.length > 0 && newStartIndex < 960;
+      setSearchHasMore(apiHasMore);
+      
+      console.log(`🔍 Arama: startIndex=${newStartIndex}, sonuç=${results.length}, unique=${uniqueResults.length}, hasMore=${apiHasMore}`);
+    } catch (err) {
+      console.error('Daha fazla arama sonucu yükleme hatası:', err);
+      setSearchHasMore(false);
+    } finally {
+      setBookLoadingMore(false);
+    }
+  }, [searchQuery, searchStartIndex, searchHasMore, bookLoadingMore, bookLang, appliedFilters.minYear, appliedFilters.maxYear, appliedFilters.minPuan]);
 
   // TMDB verileri yükle (tab, filtre, sort veya sayfa değişince)
   const tmdbDataLoadedRef = useRef(false);
@@ -730,6 +1184,13 @@ export default function ExplorePage() {
     if (tmdbLoadingRef.current) return;
     
     const isFirstPage = tmdbPage === 1;
+    
+    // Cache'den veri geldiyse ve ilk sayfaysa tekrar yükleme
+    if (isFirstPage && hasCache && tmdbResults.length > 0) {
+      console.log('🎬 Cache\'den TMDB verisi kullanılıyor, API çağrısı atlanıyor');
+      tmdbDataLoadedRef.current = true;
+      return;
+    }
     
     // SADECE ilk sayfa için: zaten yüklüyse atla
     if (isFirstPage && tmdbDataLoadedRef.current && tmdbResultsRef.current.length > 0) return;
@@ -880,20 +1341,57 @@ export default function ExplorePage() {
 
   // Scroll ile Kitaplar için sonsuz kaydırma (throttled)
   const bookScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bookScrollStateRef = useRef({ 
+    loading: false, 
+    bookLoadingMore: false, 
+    bookHasMore: true, 
+    bookDataLoaded: false,
+    searchQuery: '',
+    searchHasMore: true
+  });
+  bookScrollStateRef.current = { loading, bookLoadingMore, bookHasMore, bookDataLoaded, searchQuery, searchHasMore };
+  
+  // loadMoreSearchResults'ı ref'te tut (stale closure önleme)
+  const loadMoreSearchResultsRef = useRef(loadMoreSearchResults);
+  loadMoreSearchResultsRef.current = loadMoreSearchResults;
+  
   useEffect(() => {
     if (activeTab !== 'kitaplar') return;
 
     const handleScroll = () => {
-      if (loading || bookLoadingMore || !bookHasMore) return;
+      const { 
+        loading: isLoading, 
+        bookLoadingMore: isLoadingMore, 
+        bookHasMore: hasMore, 
+        bookDataLoaded: dataLoaded,
+        searchQuery: query,
+        searchHasMore: searchMore
+      } = bookScrollStateRef.current;
+      
+      // Yükleme yapılıyorsa atla
+      if (isLoading || isLoadingMore) return;
       if (bookScrollTimeoutRef.current) return; // Throttle: bekleyen istek varsa atla
       
       const scrollPosition = window.innerHeight + window.scrollY;
-      const threshold = document.body.offsetHeight - 400;
+      const threshold = document.body.offsetHeight - 600; // Daha erken tetikle
+      
       if (scrollPosition >= threshold) {
         bookScrollTimeoutRef.current = setTimeout(() => {
-          setBookStartIndex(prev => prev + 40);
+          // Arama varsa loadMoreSearchResults kullan
+          if (query.trim().length >= 2) {
+            if (searchMore) {
+              loadMoreSearchResultsRef.current();
+            }
+          } else {
+            // Keşfet modu - daha fazla veri yoksa veya ilk yükleme bitmemişse atla
+            if (!hasMore || !dataLoaded) {
+              bookScrollTimeoutRef.current = null;
+              return;
+            }
+            setBookStartIndex(prev => prev + 40);
+          }
           bookScrollTimeoutRef.current = null;
-        }, 800); // 800ms bekle
+        }, 300);
       }
     };
 
@@ -904,9 +1402,9 @@ export default function ExplorePage() {
         clearTimeout(bookScrollTimeoutRef.current);
       }
     };
-  }, [activeTab, loading, bookLoadingMore, bookHasMore]);
+  }, [activeTab]); // Sadece tab değişince re-attach - state'ler ref ile takip ediliyor
 
-  // Kitaplar için varsayılan veri yükle (tab değişince veya sıralama değişince)
+  // Kitaplar için varsayılan veri yükle (tab değişince veya kategori/sıralama değişince)
   useEffect(() => {
     const loadBooksData = async () => {
       if (activeTab !== 'kitaplar') return;
@@ -914,57 +1412,368 @@ export default function ExplorePage() {
       // Arama varsa zaten handleSearch çalışacak
       if (searchQuery.trim().length >= 2) return;
       
-      // Hata varsa ve ilk sayfa ise tekrar deneme
-      if (bookError && bookStartIndex === 0) return;
+      // ============================================
+      // PUAN FİLTRESİ AKTİFSE VERİTABANINDAN ÇEK
+      // ============================================
+      if (appliedFilters.minPuan) {
+        // İlk sayfa kontrolü
+        const isFirstDbPage = bookStartIndex === 0;
+        
+        // Cache'den veri geldiyse ve ilk sayfaysa tekrar yükleme
+        if (isFirstDbPage && hasCache && bookResults.length > 0) {
+          console.log('📚 Puan filtresi: Cache\'den veri kullanılıyor, API çağrısı atlanıyor');
+          setBookDataLoaded(true);
+          return;
+        }
+        
+        if (isFirstDbPage) {
+          setLoading(true);
+          seenBookIds.current.clear();
+        } else {
+          setBookLoadingMore(true);
+        }
+        
+        try {
+          const sayfa = Math.floor(bookStartIndex / 40) + 1;
+          console.log(`📚 Veritabanından puanlı kitaplar çekiliyor: minPuan=${appliedFilters.minPuan}, sayfa=${sayfa}`);
+          
+          const response = await icerikApi.filtrele({
+            tur: 'kitap',
+            minPuan: appliedFilters.minPuan,
+            sayfa,
+            limit: 40
+          });
+          
+          // Veritabanı sonuçlarını GoogleBook formatına çevir
+          // Puanlar zaten 10 üzerinden, dönüşüm yapmıyoruz
+          const dbResults: GoogleBook[] = response.data.map((item) => ({
+            id: `db-${item.id}`,
+            baslik: item.baslik,
+            title: item.baslik,
+            yazarlar: [],
+            authors: [],
+            aciklama: item.aciklama || '',
+            description: item.aciklama || '',
+            posterUrl: item.posterUrl || '',
+            thumbnail: item.posterUrl || '',
+            yayinTarihi: item.yayinTarihi?.toString().slice(0, 10) || '',
+            publishedDate: item.yayinTarihi?.toString().slice(0, 10) || '',
+            ortalamaPuan: item.ortalamaPuan ? Number(item.ortalamaPuan) : undefined,
+            averageRating: item.ortalamaPuan ? Number(item.ortalamaPuan) : undefined,
+            dil: 'tr',
+            language: 'tr',
+          }));
+          
+          // Duplicate kontrolü
+          const uniqueResults = dbResults.filter((book: GoogleBook) => {
+            if (seenBookIds.current.has(book.id)) return false;
+            seenBookIds.current.add(book.id);
+            return true;
+          });
+          
+          if (isFirstDbPage) {
+            setBookResults(uniqueResults);
+          } else {
+            setBookResults(prev => [...prev, ...uniqueResults]);
+          }
+          
+          setBookHasMore(response.toplamSayfa > sayfa);
+          setBookDataLoaded(true);
+          
+          console.log(`📚 Veritabanından ${uniqueResults.length} kitap geldi, toplam sayfa: ${response.toplamSayfa}`);
+        } catch (err) {
+          console.error('Veritabanı kitap yükleme hatası:', err);
+          setBookHasMore(false);
+        } finally {
+          setLoading(false);
+          setBookLoadingMore(false);
+        }
+        
+        return; // Veritabanından çektik, Google Books API'yi çağırma
+      }
       
-      // İlk sayfa zaten yüklü ve yeni istek değilse atla
-      if (bookDataLoaded && bookStartIndex === 0 && bookResults.length > 0) return;
+      // ============================================
+      // PUAN FİLTRESİ YOKSA GOOGLE BOOKS API
+      // ============================================
       
-      const isFirstPage = bookStartIndex === 0;
-      if (isFirstPage) {
+      // İlk sayfa kontrolü
+      const isFirstPage = bookStartIndex === 0 && allQueryIndex === 0;
+      
+      // Cache'den veri geldiyse ve ilk sayfaysa tekrar yükleme
+      if (isFirstPage && hasCache && bookResults.length > 0) {
+        console.log('📚 Cache\'den veri kullanılıyor, API çağrısı atlanıyor');
+        setBookDataLoaded(true);
+        return;
+      }
+      
+      // Duplicate request kontrolü - aynı startIndex+queryIndex kombinasyonu için tekrar istek yapma
+      const requestKey = `${bookStartIndex}-${allQueryIndex}`;
+      if (lastRequestedKey.current === requestKey) {
+        console.log(`⏭️ Duplicate request engellendi: ${requestKey}`);
+        return;
+      }
+      lastRequestedKey.current = requestKey;
+      
+      // İlk yükleme kontrolü (sadece en baştaki sorgu)
+      const isVeryFirstLoad = bookStartIndex === 0 && allQueryIndex === 0;
+      
+      if (isVeryFirstLoad) {
         setLoading(true);
+        seenBookIds.current.clear(); // İlk sayfada ID setini temizle
+      } else if (bookStartIndex === 0) {
+        // Yeni sorguya geçildi ama ilk yükleme değil - loading devam etsin
       } else {
         setBookLoadingMore(true);
       }
+      
       try {
-        // Varsayılan olarak "bestseller" araması yap
-        const results = await externalApi.searchBooks('bestseller', bookStartIndex, 40, bookSort);
+        // Seçili kategorinin arama sorgusunu al - dile göre farklı sorgu
+        let searchTerm: string;
+        if (bookCategory === 'all') {
+          // "Tümü" için harf/kelime rotasyonu kullan
+          searchTerm = allCategoryQueries[allQueryIndex] || 'a';
+        } else {
+          const selectedCategory = bookCategories.find(c => c.value === bookCategory);
+          // Dile göre uygun sorguyu seç
+          if (bookLang === 'tr') {
+            searchTerm = selectedCategory?.queryTr || 'roman';
+          } else if (bookLang === 'en') {
+            searchTerm = selectedCategory?.queryEn || 'subject:fiction';
+          } else {
+            // Tüm diller - startIndex'e göre TR/EN sorgusunu dönüşümlü kullan
+            // İlk sayfa ve çift sayılı sayfalar için TR, tek sayılı sayfalar için EN
+            const pageNumber = Math.floor(bookStartIndex / 40);
+            if (pageNumber % 2 === 0) {
+              searchTerm = selectedCategory?.queryTr || 'roman';
+            } else {
+              searchTerm = selectedCategory?.queryEn || 'subject:fiction';
+            }
+          }
+        }
         
-        // "En Yeni" seçiliyse, yayın yılına göre sırala (client tarafında)
-        if (bookSort === 'newest' && results.length > 0) {
-          results.sort((a, b) => {
-            const yearA = parseYearFromDate(a.yayinTarihi);
-            const yearB = parseYearFromDate(b.yayinTarihi);
-            return yearB - yearA; // En yeniden en eskiye
+        console.log(`📚 Kitap arama: "${searchTerm}", startIndex: ${bookStartIndex}, queryIndex: ${allQueryIndex}, lang: ${bookLang || 'all'}`);
+        
+        // Dil filtresi (boş ise tüm diller) - q parametresinden BAĞIMSIZ langRestrict
+        const langParam = bookLang || undefined;
+        // Ticari kitaplar için paid-ebooks filtresi (daha kaliteli sonuçlar)
+        // Not: Bazı dillerde paid-ebooks çok az sonuç verebilir, bu yüzden opsiyonel
+        const filterParam = undefined; // 'paid-ebooks' çok kısıtlayıcı olabilir
+        
+        const response = await externalApi.searchBooks(searchTerm, bookStartIndex, 40, 'relevance', langParam, filterParam);
+        
+        // Başarılı istek - rate limit sayacını sıfırla
+        rateLimitRetryCount.current = 0;
+        
+        let results = response.items || [];
+        
+        // ============================================
+        // CLIENT-SIDE KALİTE FİLTRELEMESİ + HTML TEMİZLEME
+        // ============================================
+        // Resmi, açıklaması veya yazarı olmayan "çöp" kitapları filtrele
+        // HTML taglarını temizle (Google Books bazen <b>, <p>, <i> döndürüyor)
+        results = results.filter((book: GoogleBook) => {
+          // Kapak resmi olmalı (posterUrl veya thumbnail)
+          const hasCover = book.posterUrl || book.thumbnail;
+          if (!hasCover) return false;
+          // Başlık olmalı
+          const title = book.baslik || book.title;
+          if (!title || title.trim().length < 2) return false;
+          // Yazar veya açıklama olmalı (en az biri)
+          const hasAuthor = (book.yazarlar && book.yazarlar.length > 0) || (book.authors && book.authors.length > 0);
+          // Açıklamayı HTML'den temizle ve kontrol et
+          const rawDescription = book.aciklama || book.description || '';
+          const cleanDescription = stripHtmlTags(rawDescription);
+          const hasDescription = cleanDescription.length > 20;
+          if (!hasAuthor && !hasDescription) return false;
+          return true;
+        });
+        
+        // HTML taglarını tüm açıklamalardan temizle
+        results = results.map((book: GoogleBook) => ({
+          ...book,
+          aciklama: stripHtmlTags(book.aciklama),
+          description: stripHtmlTags(book.description),
+        }));
+        
+        // CLIENT-SIDE DİL FİLTRELEMESİ (langRestrict API'de her zaman çalışmıyor)
+        if (bookLang) {
+          const beforeFilter = results.length;
+          results = results.filter((book: GoogleBook) => {
+            const bookLanguage = book.dil || book.language || '';
+            return bookLanguage === bookLang;
+          });
+          console.log(`🌍 Dil filtresi (${bookLang}): ${beforeFilter} -> ${results.length} kitap`);
+        }
+        
+        // Sonuç gelmedi veya API limiti (1000) - sonraki sorguya geç
+        if (results.length === 0 || bookStartIndex >= 960) {
+          if (bookCategory === 'all' && allQueryIndex < allCategoryQueries.length - 1) {
+            // Sonraki harfe/kelimeye geç
+            console.log(`🔄 Sonraki sorguya geçiliyor: ${allCategoryQueries[allQueryIndex + 1]}`);
+            setAllQueryIndex(prev => prev + 1);
+            setBookStartIndex(0);
+            // Loading state'leri temizle ki scroll handler çalışsın
+            setBookLoadingMore(false);
+            setLoading(false);
+            return; // useEffect tekrar tetiklenecek
+          } else if (bookCategory !== 'all' && bookStartIndex < 960 && results.length === 0) {
+            // Belirli kategori seçiliyken sonuç gelmezse devam et
+            console.log(`⏩ Kategori aramasında sonuç yok, devam: startIndex ${bookStartIndex} -> ${bookStartIndex + 40}`);
+            setBookStartIndex(prev => prev + 40);
+            setBookLoadingMore(false);
+            setLoading(false);
+            return;
+          } else {
+            // Gerçekten sonuç kalmadı
+            setBookHasMore(false);
+          }
+        }
+        
+        // Güçlü duplicate kontrolü - useRef ile kalıcı set
+        let uniqueNewResults = results.filter((r: GoogleBook) => {
+          if (seenBookIds.current.has(r.id)) {
+            return false;
+          }
+          seenBookIds.current.add(r.id);
+          return true;
+        });
+        
+        // Yıl filtresi uygula (appliedFilters'tan)
+        // Aralıktaki kitaplar + tarihi bilinmeyenler gösterilsin, aralık dışındakiler çıkarılsın
+        if (appliedFilters.minYear || appliedFilters.maxYear) {
+          const minY = appliedFilters.minYear ? parseInt(String(appliedFilters.minYear), 10) : 0;
+          const maxY = appliedFilters.maxYear ? parseInt(String(appliedFilters.maxYear), 10) : 9999;
+          
+          const inRange: GoogleBook[] = [];
+          const noDate: GoogleBook[] = [];
+          
+          uniqueNewResults.forEach((book: GoogleBook) => {
+            const year = parseYearFromDate(book.yayinTarihi || book.publishedDate);
+            if (year === 0) {
+              noDate.push(book);
+            } else if (year >= minY && year <= maxY) {
+              inRange.push(book);
+            }
+            // Aralık dışındakiler çıkarılıyor
+          });
+          
+          uniqueNewResults = [...inRange, ...noDate];
+        }
+        
+        // Puan filtresi uygula (kitaplar için - 5 üzerinden 10'a çevir)
+        if (appliedFilters.minPuan) {
+          uniqueNewResults = uniqueNewResults.filter((book: GoogleBook) => {
+            const rating = book.ortalamaPuan || book.averageRating || 0;
+            // Google Books 5 üzerinden, UI 10 üzerinden gösteriyor
+            const rating10 = rating * 2;
+            return rating10 >= appliedFilters.minPuan!;
           });
         }
         
-        // Duplicate'leri filtrele (aynı ID)
-        const existingIds = new Set(bookResults.map(r => r.id));
-        const uniqueNewResults = results.filter(r => !existingIds.has(r.id));
-        
-        const merged = isFirstPage ? results : [...bookResults, ...uniqueNewResults];
-        setBookResults(merged);
-        setBookHasMore(uniqueNewResults.length > 0 || (isFirstPage && results.length > 0));
-        if (isFirstPage) {
-          setBookDataLoaded(true);
+        // "Tümü" kategorisinde sonuçları karıştır (shuffle)
+        if (bookCategory === 'all' && uniqueNewResults.length > 0) {
+          for (let i = uniqueNewResults.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [uniqueNewResults[i], uniqueNewResults[j]] = [uniqueNewResults[j], uniqueNewResults[i]];
+          }
         }
-        setBookError(false);
-      } catch (err) {
-        console.error('Kitap yükleme hatası:', err);
-        setBookError(true);
-        setBookHasMore(false);
-      } finally {
-        if (isFirstPage) {
-          setLoading(false);
+        
+        // Callback form kullanarak stale closure sorununu önle
+        // İlk yükleme: 36 kitaba ulaşana kadar sorgular devam eder
+        const isInitialLoading = bookStartIndex === 0; // Bu sorgunun ilk sayfası mı?
+        
+        if (isInitialLoading) {
+          setBookResults(prev => {
+            const merged = [...prev, ...uniqueNewResults];
+            const totalCount = merged.length;
+            
+            // İlk yüklemede minimum 36 kitap gelene kadar devam et
+            const MIN_INITIAL_BOOKS = 36;
+            if (totalCount < MIN_INITIAL_BOOKS && bookCategory === 'all' && allQueryIndex < allCategoryQueries.length - 1) {
+              console.log(`📚 İlk yükleme: ${totalCount} kitap var, ${MIN_INITIAL_BOOKS} olana kadar devam ediliyor (sorgu ${allQueryIndex + 1})`);
+              // Sonraki sorguya geç
+              setTimeout(() => {
+                setAllQueryIndex(prevIdx => prevIdx + 1);
+              }, 0);
+            } else if (totalCount >= MIN_INITIAL_BOOKS) {
+              // Yeterli kitap var, loading'i kapat
+              setBookDataLoaded(true);
+              setLoading(false);
+            }
+            
+            return merged;
+          });
         } else {
+          setBookResults(prev => {
+            // Duplicate kontrolü - prev array'inde olan ID'leri filtrele
+            const existingIds = new Set(prev.map(b => b.id));
+            const trulyNew = uniqueNewResults.filter(b => !existingIds.has(b.id));
+            
+            // Scroll ile yüklemede sonuç olmadıysa ve "Tümü" kategorisindeyse sonraki sorguya geç
+            if (trulyNew.length === 0 && bookCategory === 'all' && allQueryIndex < allCategoryQueries.length - 1) {
+              console.log(`🔄 Scroll: Sonuç yok, sonraki sorguya geçiliyor: ${allQueryIndex + 1}`);
+              setAllQueryIndex(prevIdx => prevIdx + 1);
+              setBookStartIndex(0);
+            }
+            
+            return [...prev, ...trulyNew];
+          });
+        }
+        
+        // "Tümü" kategorisinde her zaman devam et (rotasyon var)
+        if (bookCategory === 'all') {
+          setBookHasMore(allQueryIndex < allCategoryQueries.length - 1 || results.length > 0);
+        } else {
+          setBookHasMore(results.length > 0);
+        }
+        
+        // Tüm sorgular bittiyse loading'i kapat
+        if (allQueryIndex >= allCategoryQueries.length - 1) {
+          setBookDataLoaded(true);
+          setLoading(false);
+        }
+      } catch (err: unknown) {
+        console.error('Kitap yükleme hatası:', err);
+        
+        // Rate limit kontrolü (429 hatası)
+        const isRateLimited = err instanceof Error && 
+          (err.message.includes('429') || err.message.includes('rate') || err.message.includes('limit'));
+        
+        if (isRateLimited) {
+          rateLimitRetryCount.current += 1;
+          console.warn(`⚠️ Rate limit! Deneme: ${rateLimitRetryCount.current}/${MAX_RATE_LIMIT_RETRIES}`);
+          
+          if (rateLimitRetryCount.current >= MAX_RATE_LIMIT_RETRIES) {
+            console.error('❌ Rate limit aşıldı, yükleme durduruluyor');
+            setBookHasMore(false);
+            setLoading(false);
+            setBookLoadingMore(false);
+            return;
+          }
+        }
+        
+        // Hata durumunda sonraki sorguya geç (rate limit değilse veya limit aşılmadıysa)
+        if (bookCategory === 'all' && allQueryIndex < allCategoryQueries.length - 1) {
+          setAllQueryIndex(prev => prev + 1);
+          setBookStartIndex(0);
+        } else {
+          setBookHasMore(false);
+          setLoading(false);
+          setBookLoadingMore(false);
+        }
+      } finally {
+        // Scroll durumunda (startIndex > 0) loading'i kapat
+        if (bookStartIndex > 0) {
           setBookLoadingMore(false);
         }
       }
     };
     
     loadBooksData();
-  }, [activeTab, bookSort, searchQuery, bookStartIndex]);
+    // bookDataLoaded'ı dependency'den çıkardık çünkü infinite scroll'u engelliyordu
+    // bookStartIndex veya allQueryIndex değişince her zaman yeni veri çekmeli
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, bookCategory, bookLang, searchQuery, bookStartIndex, allQueryIndex, appliedFilters.minYear, appliedFilters.maxYear, appliedFilters.minPuan]);
 
   // Arama tetikle
   useEffect(() => {
@@ -974,15 +1783,29 @@ export default function ExplorePage() {
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, activeTab, tmdbFilter, bookSort, handleSearch]);
+  }, [searchQuery, activeTab, tmdbFilter, handleSearch]);
 
-  // URL params güncelle
+  // URL params güncelle - tüm filtreler dahil
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     params.set('tab', activeTab);
+    
+    // TMDB filtreleri
+    if (tmdbFilter !== 'all') params.set('tmdbFilter', tmdbFilter);
+    if (tmdbSort !== 'popular') params.set('tmdbSort', tmdbSort);
+    
+    // Kitap filtreleri
+    if (bookLang) params.set('bookLang', bookLang);
+    if (bookCategory !== 'all') params.set('bookCategory', bookCategory);
+    
+    // Yıl filtreleri
+    if (appliedFilters.minYear) params.set('minYear', appliedFilters.minYear.toString());
+    if (appliedFilters.maxYear) params.set('maxYear', appliedFilters.maxYear.toString());
+    if (appliedFilters.minPuan) params.set('minPuan', appliedFilters.minPuan.toString());
+    
     setSearchParams(params, { replace: true });
-  }, [searchQuery, activeTab, setSearchParams]);
+  }, [searchQuery, activeTab, tmdbFilter, tmdbSort, bookLang, bookCategory, appliedFilters.minYear, appliedFilters.maxYear, appliedFilters.minPuan, setSearchParams]);
 
   // İçerik import et
   const handleImport = async (id: string, type: 'film' | 'kitap' | 'tv') => {
@@ -1109,15 +1932,23 @@ export default function ExplorePage() {
         <>
           {bookResults.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {bookResults.map((book) => (
-                <ExternalCard
-                  key={book.id}
-                  item={book}
-                  type="kitap"
-                  onImport={() => handleImport(book.id, 'kitap')}
-                  importing={importing === book.id}
-                />
-              ))}
+              {bookResults.map((book) => {
+                // Veritabanından gelen kitap mı kontrol et
+                const isDbBook = book.id.startsWith('db-');
+                const dbId = isDbBook ? parseInt(book.id.replace('db-', '')) : undefined;
+                
+                return (
+                  <ExternalCard
+                    key={book.id}
+                    item={book}
+                    type="kitap"
+                    onImport={() => handleImport(book.id, 'kitap')}
+                    importing={importing === book.id}
+                    dbId={dbId}
+                    onNavigate={(id) => navigate(`/icerik/kitap/${id}`)}
+                  />
+                );
+              })}
             </div>
           ) : searchQuery.trim().length >= 2 ? (
             <NebulaCard className="text-center py-12">
@@ -1145,15 +1976,19 @@ export default function ExplorePage() {
             onTmdbFilterChange={handleTmdbFilterChange}
             tmdbSort={tmdbSort}
             onTmdbSortChange={handleTmdbSortChange}
-            bookSort={bookSort}
-            onBookSortChange={handleBookSortChange}
+            bookCategory={bookCategory}
+            bookCategories={bookCategories}
+            onBookCategoryChange={handleBookCategoryChange}
+            bookLang={bookLang}
+            bookLanguages={bookLanguages}
+            onBookLangChange={handleBookLangChange}
             minYear={minYear}
             maxYear={maxYear}
             minPuan={minPuan}
             selectedGenres={selectedGenres}
             onMinYearChange={setMinYear}
             onMaxYearChange={setMaxYear}
-            onMinPuanChange={setMinPuan}
+            onMinPuanChange={handleMinPuanChange}
             onGenresChange={setSelectedGenres}
             onApply={applyFilters}
             onReset={resetFilters}

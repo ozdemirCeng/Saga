@@ -13,6 +13,7 @@ import {
   Film,
   BookOpen,
 } from 'lucide-react';
+import { Menu } from '@mantine/core';
 import { useAuth } from '../../context/AuthContext';
 import { listeApi } from '../../services/api';
 import type { Liste } from '../../services/api';
@@ -71,7 +72,6 @@ export default function ListsPage() {
   const [listeler, setListeler] = useState<Liste[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 
   // Listeleri yükle
@@ -105,7 +105,6 @@ export default function ListsPage() {
       console.error('Liste silinirken hata:', err);
     } finally {
       setDeleteLoading(null);
-      setActiveMenu(null);
     }
   };
 
@@ -119,7 +118,6 @@ export default function ListsPage() {
     } catch (err) {
       console.error('Gizlilik değiştirilirken hata:', err);
     }
-    setActiveMenu(null);
   };
 
   // Paylaş
@@ -132,7 +130,6 @@ export default function ListsPage() {
     } catch (err) {
       console.error('Paylaşım hatası:', err);
     }
-    setActiveMenu(null);
   };
 
   if (!isAuthenticated) {
@@ -223,66 +220,46 @@ export default function ListsPage() {
                 </div>
 
                 {/* Menu Button */}
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveMenu(activeMenu === liste.id ? null : liste.id);
-                    }}
-                    className="p-2 rounded-lg hover:bg-[rgba(255,255,255,0.1)] transition-colors"
-                  >
-                    <MoreVertical size={18} className="text-[rgba(255,255,255,0.5)]" />
-                  </button>
+                <Menu shadow="md" width={200} position="bottom-end">
+                  <Menu.Target>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-2 rounded-lg hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+                    >
+                      <MoreVertical size={18} className="text-[rgba(255,255,255,0.5)]" />
+                    </button>
+                  </Menu.Target>
 
-                  {/* Dropdown Menu */}
-                  {activeMenu === liste.id && (
-                    <div className="
-                      absolute right-0 top-full mt-1 w-48
-                      bg-[rgba(20,20,35,0.95)]
-                      backdrop-blur-xl
-                      border border-[rgba(255,255,255,0.1)]
-                      rounded-xl
-                      shadow-xl
-                      overflow-hidden
-                      z-10
-                    ">
-                      <button
-                        onClick={() => navigate(`/liste/${liste.id}/duzenle`)}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-sm text-[rgba(255,255,255,0.8)] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-                      >
-                        <Edit2 size={14} />
-                        Düzenle
-                      </button>
-                      <button
-                        onClick={() => handleTogglePrivacy(liste)}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-sm text-[rgba(255,255,255,0.8)] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-                      >
-                        {liste.herkeseAcik ? <Lock size={14} /> : <Globe size={14} />}
-                        {liste.herkeseAcik ? 'Gizli Yap' : 'Herkese Aç'}
-                      </button>
-                      <button
-                        onClick={() => handleShare(liste)}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-sm text-[rgba(255,255,255,0.8)] hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-                      >
-                        <Share2 size={14} />
-                        Paylaş
-                      </button>
-                      <div className="border-t border-[rgba(255,255,255,0.06)]" />
-                      <button
-                        onClick={() => handleDelete(liste.id)}
-                        disabled={deleteLoading === liste.id}
-                        className="w-full px-4 py-3 flex items-center gap-3 text-sm text-[#d63031] hover:bg-[rgba(214,48,49,0.1)] transition-colors disabled:opacity-50"
-                      >
-                        {deleteLoading === liste.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={14} />
-                        )}
-                        Sil
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<Edit2 size={14} />}
+                      onClick={() => navigate(`/liste/${liste.id}/duzenle`)}
+                    >
+                      Düzenle
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={liste.herkeseAcik ? <Lock size={14} /> : <Globe size={14} />}
+                      onClick={() => handleTogglePrivacy(liste)}
+                    >
+                      {liste.herkeseAcik ? 'Gizli Yap' : 'Herkese Aç'}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Share2 size={14} />}
+                      onClick={() => handleShare(liste)}
+                    >
+                      Paylaş
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      color="red"
+                      leftSection={deleteLoading === liste.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      onClick={() => handleDelete(liste.id)}
+                      disabled={deleteLoading === liste.id}
+                    >
+                      Sil
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               </div>
             </GlassCard>
           ))}
@@ -303,14 +280,6 @@ export default function ListsPage() {
 
       {/* Create Modal */}
       <CreateModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
-
-      {/* Click outside to close menu */}
-      {activeMenu && (
-        <div 
-          className="fixed inset-0 z-0" 
-          onClick={() => setActiveMenu(null)}
-        />
-      )}
     </div>
   );
 }

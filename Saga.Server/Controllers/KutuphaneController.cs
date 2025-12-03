@@ -160,8 +160,8 @@ namespace Saga.Server.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Durum değişikliği için aktivite
-                await CreateAktivite(kullaniciId, kutuphaneDurum.Id);
+                // NOT: Aktivite kaydı artık veritabanı trigger'ları tarafından yapılıyor.
+                // Çifte kayıt sorununu önlemek için CreateAktivite çağrısı kaldırıldı.
 
                 var response = new KutuphaneDurumDto
                 {
@@ -375,22 +375,6 @@ namespace Saga.Server.Controllers
         }
 
         // Helper Methods BaseApiController'dan gelmektedir.
-        private async Task CreateAktivite(Guid kullaniciId, long kutuphaneDurumId)
-        {
-            var kutuphaneDurum = await _context.KutuphaneDurumlari.FindAsync(kutuphaneDurumId);
-            if (kutuphaneDurum == null) return;
-
-            var aktivite = new Aktivite
-            {
-                KullaniciId = kullaniciId,
-                AktiviteTuru = AktiviteTuru.durum_guncelleme,
-                IcerikId = kutuphaneDurum.IcerikId,
-                Veri = System.Text.Json.JsonSerializer.Serialize(new { durum = kutuphaneDurum.Durum.ToString(), ilerleme = kutuphaneDurum.Ilerleme }),
-                OlusturulmaZamani = DateTime.UtcNow
-            };
-
-            _context.Aktiviteler.Add(aktivite);
-            await _context.SaveChangesAsync();
-        }
+        // CreateAktivite metodu kaldırıldı - veritabanı trigger'ları aktivite kaydını otomatik yapıyor.
     }
 }

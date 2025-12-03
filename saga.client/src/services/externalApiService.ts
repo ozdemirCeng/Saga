@@ -22,6 +22,12 @@ export interface ExternalBook {
     ortalamaPuan?: number;
 }
 
+// Google Books arama sonucu (totalItems ile birlikte)
+export interface GoogleBooksSearchResult {
+    items: ExternalBook[];
+    totalItems: number;
+}
+
 export const externalApiService = {
     // TMDB Film Arama
     searchTmdbFilms: async (query: string, page = 1) => {
@@ -53,10 +59,10 @@ export const externalApiService = {
         return response.data;
     },
 
-    // Google Books Arama
-    searchGoogleBooks: async (query: string, startIndex = 0, limit = 20, orderBy?: 'relevance' | 'newest') => {
-        const response = await api.get<ExternalBook[]>('/externalapi/books/search', {
-            params: { q: query, baslangic: startIndex, limit, orderBy }
+    // Google Books Arama - totalItems bilgisi ile birlikte
+    searchGoogleBooks: async (query: string, startIndex = 0, limit = 20, orderBy?: 'relevance' | 'newest', langRestrict?: string) => {
+        const response = await api.get<GoogleBooksSearchResult>('/externalapi/books/search', {
+            params: { q: query, baslangic: startIndex, limit, orderBy, langRestrict }
         });
         return response.data;
     },

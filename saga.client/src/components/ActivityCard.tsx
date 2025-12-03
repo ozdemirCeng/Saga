@@ -244,22 +244,27 @@ export function ActivityCard({ aktivite, isLoggedIn, showUserInfo = true, isOwnP
   };
 
   const renderDurumContent = () => {
+    // devam_ediyor durumunu içerik türüne göre İzleniyor/Okunuyor olarak göster
+    const durumLabel = veri?.durum?.toLowerCase() === 'devam_ediyor' 
+      ? (veri?.tur === 'kitap' ? 'Okunuyor' : 'İzleniyor')
+      : veri?.durum;
+    
     const durumConfig: Record<string, { color: string; bg: string }> = {
-      'izledim': { color: '#00b894', bg: 'rgba(0, 184, 148, 0.15)' },
+      'izlendi': { color: '#00b894', bg: 'rgba(0, 184, 148, 0.15)' },
       'izlenecek': { color: '#6C5CE7', bg: 'rgba(108, 92, 231, 0.15)' },
-      'okudum': { color: '#00b894', bg: 'rgba(0, 184, 148, 0.15)' },
+      'okundu': { color: '#00b894', bg: 'rgba(0, 184, 148, 0.15)' },
       'okunacak': { color: '#6C5CE7', bg: 'rgba(108, 92, 231, 0.15)' },
       'izleniyor': { color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.15)' },
       'okunuyor': { color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.15)' },
     };
-    const config = durumConfig[veri?.durum?.toLowerCase() || ''] || { color: '#8E8E93', bg: 'rgba(142, 142, 147, 0.15)' };
+    const config = durumConfig[durumLabel?.toLowerCase() || ''] || { color: '#8E8E93', bg: 'rgba(142, 142, 147, 0.15)' };
     return (
       <div className="flex gap-4 p-4 rounded-xl bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)] cursor-pointer hover:bg-[rgba(255,255,255,0.06)] transition-all" onClick={handleContentClick}>
         {veri?.posterUrl && <img src={veri.posterUrl} alt={veri.baslik} className="w-16 h-24 rounded-lg object-cover flex-shrink-0" />}
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-white line-clamp-2">{veri?.baslik}</h4>
           <div className="flex items-center gap-2 mt-1">{getTurIcon(veri?.tur)}<span className="text-xs text-[rgba(255,255,255,0.5)] capitalize">{veri?.tur}</span></div>
-          <div className="mt-3"><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: config.bg, color: config.color }}><Play size={12} />{veri?.durum}</span></div>
+          <div className="mt-3"><span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: config.bg, color: config.color }}><Play size={12} />{durumLabel}</span></div>
         </div>
       </div>
     );

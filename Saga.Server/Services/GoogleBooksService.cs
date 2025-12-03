@@ -1,6 +1,7 @@
 using Saga.Server.Data;
 using Saga.Server.Models;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Saga.Server.Services
 {
@@ -9,7 +10,9 @@ namespace Saga.Server.Services
         private readonly HttpClient _httpClient;
         private readonly SagaDbContext _context;
         private readonly ILogger<GoogleBooksService> _logger;
-        private readonly string _apiKey;
+        private readonly string[] _apiKeys;
+        private int _currentKeyIndex = 0;
+        private readonly object _keyLock = new();
         private const string BaseUrl = "https://www.googleapis.com/books/v1";
 
         public GoogleBooksService(
@@ -21,18 +24,95 @@ namespace Saga.Server.Services
             _httpClient = httpClient;
             _context = context;
             _logger = logger;
-            _apiKey = configuration["GoogleBooks:ApiKey"] ?? "";
+            
+            // Önce ApiKeys array'ini dene, yoksa tek ApiKey'i al
+            var apiKeys = configuration.GetSection("GoogleBooks:ApiKeys").Get<string[]>();
+            if (apiKeys != null && apiKeys.Length > 0)
+            {
+                _apiKeys = apiKeys;
+                _logger.LogInformation("🔑 Google Books API: {Count} adet API key yüklendi", _apiKeys.Length);
+            }
+            else
+            {
+                var singleKey = configuration["GoogleBooks:ApiKey"];
+                _apiKeys = !string.IsNullOrEmpty(singleKey) ? new[] { singleKey } : Array.Empty<string>();
+            }
+        }
+
+        /// <summary>
+        /// HTML taglarını temizleyen yardımcı metot
+        /// </summary>
+        private static string StripHtmlTags(string? html)
+        {
+            if (string.IsNullOrEmpty(html)) return "";
+            
+            // <br> ve </p> taglarını satır sonuna çevir
+            var text = Regex.Replace(html, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"</p>", "\n", RegexOptions.IgnoreCase);
+            
+            // Diğer HTML taglarını kaldır
+            text = Regex.Replace(text, @"<[^>]*>", "");
+            
+            // HTML entities decode
+            text = text.Replace("&amp;", "&")
+                       .Replace("&lt;", "<")
+                       .Replace("&gt;", ">")
+                       .Replace("&quot;", "\"")
+                       .Replace("&#39;", "'")
+                       .Replace("&nbsp;", " ");
+            
+            // Birden fazla satır sonunu düzenle
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+            
+            // Satır başı/sonu boşlukları temizle
+            var lines = text.Split('\n').Select(l => l.Trim());
+            text = string.Join("\n", lines).Trim();
+            
+            return text;
+        }
+
+        private string GetCurrentApiKey()
+        {
+            lock (_keyLock)
+            {
+                if (_apiKeys.Length == 0) return "";
+                return _apiKeys[_currentKeyIndex];
+            }
+        }
+
+        private bool SwitchToNextKey()
+        {
+            lock (_keyLock)
+            {
+                if (_apiKeys.Length <= 1) return false;
+                
+                var oldIndex = _currentKeyIndex;
+                _currentKeyIndex = (_currentKeyIndex + 1) % _apiKeys.Length;
+                _logger.LogWarning("🔄 API Key değiştirildi: Key {OldIndex} → Key {NewIndex}", oldIndex + 1, _currentKeyIndex + 1);
+                return true;
+            }
         }
 
         public async Task<GoogleBookDto?> GetBookByIdAsync(string googleBooksId)
         {
             try
             {
-                var url = string.IsNullOrEmpty(_apiKey)
+                var apiKey = GetCurrentApiKey();
+                var url = string.IsNullOrEmpty(apiKey)
                     ? $"{BaseUrl}/volumes/{googleBooksId}"
-                    : $"{BaseUrl}/volumes/{googleBooksId}?key={_apiKey}";
+                    : $"{BaseUrl}/volumes/{googleBooksId}?key={apiKey}";
 
                 var response = await _httpClient.GetAsync(url);
+
+                // Rate limit durumunda diğer key'e geç ve tekrar dene
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests && SwitchToNextKey())
+                {
+                    apiKey = GetCurrentApiKey();
+                    url = string.IsNullOrEmpty(apiKey)
+                        ? $"{BaseUrl}/volumes/{googleBooksId}"
+                        : $"{BaseUrl}/volumes/{googleBooksId}?key={apiKey}";
+                    response = await _httpClient.GetAsync(url);
+                }
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -53,51 +133,78 @@ namespace Saga.Server.Services
             }
         }
 
-        public async Task<List<GoogleBookDto>> SearchBooksAsync(string query, int startIndex = 0, int maxResults = 20, string? orderBy = null)
+        public async Task<GoogleBooksSearchResult> SearchBooksAsync(string query, int startIndex = 0, int maxResults = 20, string? orderBy = null, string? langRestrict = null, string? filter = null)
         {
             const int maxRetries = 3;
             int retryCount = 0;
+            int keySwitchCount = 0;
+            int maxKeySwitches = _apiKeys.Length; // Her key için bir şans
             
             while (retryCount < maxRetries)
             {
                 try
                 {
+                    var apiKey = GetCurrentApiKey();
                     var encodedQuery = Uri.EscapeDataString(query);
                     // orderBy: relevance (varsayılan) veya newest
                     var order = string.IsNullOrEmpty(orderBy) ? "relevance" : orderBy;
-                    var url = string.IsNullOrEmpty(_apiKey)
-                        ? $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}"
-                        : $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}&key={_apiKey}";
+                    // Dil filtresi (tr, en, de, fr, vb.) - q parametresinden BAĞIMSIZ
+                    var langParam = !string.IsNullOrEmpty(langRestrict) ? $"&langRestrict={langRestrict}" : "";
+                    // Filter: paid-ebooks (ticari kitaplar), free-ebooks, full, partial, ebooks
+                    var filterParam = !string.IsNullOrEmpty(filter) ? $"&filter={filter}" : "";
+                    // printType: books (dergileri vs. ele)
+                    var printTypeParam = "&printType=books";
+                    
+                    var url = string.IsNullOrEmpty(apiKey)
+                        ? $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}{langParam}{filterParam}{printTypeParam}"
+                        : $"{BaseUrl}/volumes?q={encodedQuery}&startIndex={startIndex}&maxResults={maxResults}&orderBy={order}{langParam}{filterParam}{printTypeParam}&key={apiKey}";
 
-                    _logger.LogInformation("📚 Google Books API isteği: {Url}", url);
+                    _logger.LogInformation("📚 Google Books API isteği (Key {KeyIndex}): startIndex={StartIndex}", _currentKeyIndex + 1, startIndex);
 
                     var response = await _httpClient.GetAsync(url);
 
-                    // Rate limit (429) hatası - exponential backoff ile retry
+                    // Rate limit (429) hatası - önce diğer key'e geç
                     if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                     {
+                        // Diğer key'e geçmeyi dene
+                        if (keySwitchCount < maxKeySwitches && SwitchToNextKey())
+                        {
+                            keySwitchCount++;
+                            _logger.LogWarning("⚠️ Rate limit! Diğer API key'e geçildi ({KeySwitch}/{MaxSwitch})", keySwitchCount, maxKeySwitches);
+                            continue; // Hemen diğer key ile dene
+                        }
+                        
+                        // Tüm key'ler rate limited, exponential backoff ile bekle
                         retryCount++;
                         if (retryCount < maxRetries)
                         {
                             var delay = (int)Math.Pow(2, retryCount) * 1000; // 2s, 4s, 8s
-                            _logger.LogWarning("Google Books rate limit, {RetryCount}. deneme, {Delay}ms bekleniyor...", retryCount, delay);
+                            _logger.LogWarning("⏳ Tüm key'ler rate limited, {RetryCount}. deneme, {Delay}ms bekleniyor...", retryCount, delay);
                             await Task.Delay(delay);
+                            keySwitchCount = 0; // Key switch sayacını sıfırla
                             continue;
                         }
-                        _logger.LogWarning("Google Books rate limit aşıldı, maksimum deneme sayısına ulaşıldı");
-                        return new List<GoogleBookDto>();
+                        _logger.LogWarning("❌ Google Books rate limit aşıldı, maksimum deneme sayısına ulaşıldı");
+                        return new GoogleBooksSearchResult { Items = new List<GoogleBookDto>(), TotalItems = 0 };
                     }
 
                     if (!response.IsSuccessStatusCode)
                     {
                         _logger.LogWarning("Google Books arama hatası: {StatusCode}", response.StatusCode);
-                        return new List<GoogleBookDto>();
+                        return new GoogleBooksSearchResult { Items = new List<GoogleBookDto>(), TotalItems = 0 };
                     }
 
                     var content = await response.Content.ReadAsStringAsync();
                     var searchData = JsonSerializer.Deserialize<JsonElement>(content);
 
                     var results = new List<GoogleBookDto>();
+                    int totalItems = 0;
+
+                    // totalItems'ı al
+                    if (searchData.TryGetProperty("totalItems", out var totalItemsElement))
+                    {
+                        totalItems = totalItemsElement.GetInt32();
+                    }
 
                     if (searchData.TryGetProperty("items", out var itemsArray))
                     {
@@ -111,16 +218,17 @@ namespace Saga.Server.Services
                         }
                     }
 
-                    return results;
+                    _logger.LogInformation("✅ Google Books sonuç: {Count} kitap, toplam: {Total}, startIndex: {StartIndex}", results.Count, totalItems, startIndex);
+                    return new GoogleBooksSearchResult { Items = results, TotalItems = totalItems };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Google Books araması sırasında hata: {Query}", query);
-                    return new List<GoogleBookDto>();
+                    return new GoogleBooksSearchResult { Items = new List<GoogleBookDto>(), TotalItems = 0 };
                 }
             }
             
-            return new List<GoogleBookDto>();
+            return new GoogleBooksSearchResult { Items = new List<GoogleBookDto>(), TotalItems = 0 };
         }
 
         public async Task<Icerik?> ImportBookAsync(string googleBooksId)
@@ -199,7 +307,7 @@ namespace Saga.Server.Services
                 {
                     Id = id,
                     Baslik = volumeInfo.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
-                    Aciklama = volumeInfo.TryGetProperty("description", out var desc) ? desc.GetString() : null,
+                    Aciklama = volumeInfo.TryGetProperty("description", out var desc) ? StripHtmlTags(desc.GetString()) : null,
                     YayinTarihi = volumeInfo.TryGetProperty("publishedDate", out var date) ? date.GetString() : null,
                     Dil = volumeInfo.TryGetProperty("language", out var lang) ? lang.GetString() : null,
                     SayfaSayisi = volumeInfo.TryGetProperty("pageCount", out var pages) ? pages.GetInt32() : null

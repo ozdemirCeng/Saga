@@ -49,24 +49,49 @@ import { notifications } from '@mantine/notifications';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { EmptyState } from '../components/EmptyState';
 
+// HTML taglarını temizleyen yardımcı fonksiyon
+function stripHtmlTags(html: string | undefined | null): string {
+    if (!html) return '';
+    // <br> ve </p> taglarını satır sonuna çevir (paragraf geçişleri için)
+    let text = html.replace(/<br\s*\/?>/gi, '\n')
+                   .replace(/<\/p>/gi, '\n');
+    // Diğer HTML taglarını kaldır
+    text = text.replace(/<[^>]*>/g, '');
+    // HTML entities'i decode et
+    text = text.replace(/&amp;/g, '&')
+               .replace(/&lt;/g, '<')
+               .replace(/&gt;/g, '>')
+               .replace(/&quot;/g, '"')
+               .replace(/&#39;/g, "'")
+               .replace(/&nbsp;/g, ' ');
+    // Birden fazla satır sonunu tek satır sonuna çevir
+    text = text.replace(/\n{3,}/g, '\n\n');
+    // Satır başı/sonu boşlukları temizle
+    text = text.split('\n').map(line => line.trim()).join('\n').trim();
+    return text;
+}
+
 // Genişletilebilir metin komponenti
 function ExpandableText({ text, maxLength = 500 }: { text: string; maxLength?: number }) {
     const [expanded, setExpanded] = useState(false);
     
-    if (!text) {
+    // HTML taglarını temizle
+    const cleanText = stripHtmlTags(text);
+    
+    if (!cleanText) {
         return null;
     }
     
     // Kısa metin için direkt göster
-    if (text.length <= maxLength) {
-        return <Text size="md" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{text}</Text>;
+    if (cleanText.length <= maxLength) {
+        return <Text size="md" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{cleanText}</Text>;
     }
     
     // Uzun metin için genişletilebilir göster
     return (
         <Box>
             <Text size="md" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                {expanded ? text : `${text.substring(0, maxLength)}...`}
+                {expanded ? cleanText : `${cleanText.substring(0, maxLength)}...`}
             </Text>
             <Button
                 variant="subtle"

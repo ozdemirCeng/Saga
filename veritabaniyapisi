@@ -512,23 +512,19 @@ COMMIT;
 --
 -- -- Liste içerik sayısı testi:
 -- SELECT icerik_sayisi FROM listeler WHERE id = 1;
+
+-- ============================================
+-- ÜST YORUM (YANITLAR) DESTEĞİ
+-- ============================================
 -- 1. Yorumlar tablosuna üst yorum (yanıt) desteği için kolon ekle
-ALTER TABLE "yorumlar" ADD COLUMN "ust_yorum_id" bigint NULL;
+ALTER TABLE "yorumlar" ADD COLUMN IF NOT EXISTS "ust_yorum_id" bigint NULL;
 
 -- 2. Performans için bu kolona indeks ekle
-CREATE INDEX "IX_yorumlar_ust_yorum_id" ON "yorumlar" ("ust_yorum_id");
+CREATE INDEX IF NOT EXISTS "IX_yorumlar_ust_yorum_id" ON "yorumlar" ("ust_yorum_id");
 
 -- 3. Yorumun kendisine referans vermesi için Foreign Key kısıtlaması ekle
 ALTER TABLE "yorumlar" 
 ADD CONSTRAINT "FK_yorumlar_yorumlar_ust_yorum_id" 
 FOREIGN KEY ("ust_yorum_id") 
--- 1. Yorumlar tablosuna üst yorum (yanıt) desteği için kolon ekle
-ALTER TABLE "yorumlar" ADD COLUMN "ust_yorum_id" bigint NULL;
-
--- 2. Performans için bu kolona indeks ekle
-CREATE INDEX "IX_yorumlar_ust_yorum_id" ON "yorumlar" ("ust_yorum_id");
-
--- 3. Yorumun kendisine referans vermesi için Foreign Key kısıtlaması ekle
-ALTER TABLE "yorumlar" 
-ADD CONSTRAINT "FK_yorumlar_yorumlar_ust_yorum_id" 
-FOREIGN KEY ("ust_yorum_id") 
+REFERENCES "yorumlar" ("id") 
+ON DELETE CASCADE;
