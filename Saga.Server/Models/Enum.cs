@@ -11,7 +11,8 @@
     public enum IcerikTuru
     {
         film,
-        kitap
+        kitap,
+        dizi
     }
 
     public enum KullaniciRol

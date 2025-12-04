@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, User, Search } from 'lucide-react';
+import { Home, Compass, User, Search, Settings, LogOut, MoreHorizontal, X } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { RightWidgets } from './RightWidgets';
 import { useAuth } from '../../context/AuthContext';
@@ -93,7 +94,8 @@ export function GlassLayout() {
 function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
 
   const navItems = [
     { path: '/', icon: Home, label: 'Akış' },
@@ -115,33 +117,124 @@ function MobileNav() {
       } else {
         navigate('/giris');
       }
-    } else if (path === '/ara') {
-      navigate('/kesfet');
     } else {
       navigate(path);
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    setShowMenu(false);
+    navigate('/giris');
+  };
+
   return (
-    <div className="flex justify-around items-center h-16 px-2">
-      {navItems.map((item) => (
+    <>
+      {/* Overlay Menu */}
+      {showMenu && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowMenu(false)}
+        >
+          <div 
+            className="absolute bottom-20 left-4 right-4 bg-[rgba(20,20,35,0.95)] backdrop-blur-xl rounded-2xl border border-[rgba(255,255,255,0.1)] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Menu Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[rgba(255,255,255,0.08)]">
+              <span className="text-white font-semibold">Menü</span>
+              <button 
+                onClick={() => setShowMenu(false)}
+                className="p-1.5 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+              >
+                <X size={20} className="text-white/60" />
+              </button>
+            </div>
+            
+            {/* User Info */}
+            {isAuthenticated && user && (
+              <div className="p-4 border-b border-[rgba(255,255,255,0.08)]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#00CEC9] flex items-center justify-center overflow-hidden">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.kullaniciAdi} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white font-bold">{user.kullaniciAdi?.charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{user.goruntulenmeAdi || user.kullaniciAdi}</p>
+                    <p className="text-white/50 text-sm">@{user.kullaniciAdi}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Menu Items */}
+            <div className="p-2">
+              <button
+                onClick={() => {
+                  navigate('/ayarlar');
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[rgba(255,255,255,0.08)] transition-colors text-white/80 hover:text-white"
+              >
+                <Settings size={20} />
+                <span>Ayarlar</span>
+              </button>
+              
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[rgba(255,107,107,0.15)] transition-colors text-[#ff6b6b]"
+                >
+                  <LogOut size={20} />
+                  <span>Çıkış Yap</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Navigation */}
+      <div className="flex justify-around items-center h-16 px-2">
+        {navItems.map((item) => (
+          <button
+            key={item.path}
+            onClick={() => handleNavClick(item.path)}
+            className={`
+              flex flex-col items-center justify-center gap-0.5 
+              flex-1 h-full
+              transition-all duration-200
+              ${isActive(item.path) 
+                ? 'text-[#6C5CE7]' 
+                : 'text-[rgba(255,255,255,0.5)] active:text-white'
+              }
+            `}
+          >
+            <item.icon size={22} strokeWidth={isActive(item.path) ? 2.5 : 2} />
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </button>
+        ))}
+        
+        {/* More Button */}
         <button
-          key={item.path}
-          onClick={() => handleNavClick(item.path)}
+          onClick={() => setShowMenu(true)}
           className={`
             flex flex-col items-center justify-center gap-0.5 
             flex-1 h-full
             transition-all duration-200
-            ${isActive(item.path) 
+            ${showMenu 
               ? 'text-[#6C5CE7]' 
               : 'text-[rgba(255,255,255,0.5)] active:text-white'
             }
           `}
         >
-          <item.icon size={22} strokeWidth={isActive(item.path) ? 2.5 : 2} />
-          <span className="text-[10px] font-medium">{item.label}</span>
+          <MoreHorizontal size={22} strokeWidth={2} />
+          <span className="text-[10px] font-medium">Daha</span>
         </button>
-      ))}
-    </div>
+      </div>
+    </>
   );
 }
