@@ -56,6 +56,7 @@ namespace Saga.Server.DTOs
         
         // Yorum için
         public string? YorumOzet { get; set; }
+        public bool SpoilerIceriyor { get; set; } = false;
         
         // Liste için
         public string? ListeAdi { get; set; }

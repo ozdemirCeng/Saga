@@ -60,6 +60,7 @@ export interface AktiviteVeri {
   tur?: string;
   puan?: number;
   yorumOzet?: string;
+  spoilerIceriyor?: boolean;
   listeAdi?: string;
   takipEdilenKullaniciAdi?: string;
   takipEdilenAvatar?: string;

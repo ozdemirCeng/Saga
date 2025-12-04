@@ -747,6 +747,7 @@ namespace Saga.Server.Controllers
                         veri.Baslik = icerik?.Baslik;
                         veri.PosterUrl = icerik?.PosterUrl;
                         veri.Tur = icerik?.Tur.ToString();
+                        veri.SpoilerIceriyor = aktivite.Yorum.SpoilerIceriyor;
                         veri.YorumOzet = aktivite.Yorum.IcerikMetni.Length > 100
                             ? aktivite.Yorum.IcerikMetni.Substring(0, 100) + "..."
                             : aktivite.Yorum.IcerikMetni;

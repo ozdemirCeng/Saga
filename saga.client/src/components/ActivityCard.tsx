@@ -18,6 +18,7 @@ import {
   Tv,
   MoreHorizontal,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { aktiviteApi } from "../services/api";
 import type { Aktivite, AktiviteYorum } from "../services/api";
@@ -55,6 +56,13 @@ function YorumItem({
   const [begendim, setBegendim] = useState(yorum.begendim || false);
   const [begeniSayisi, setBegeniSayisi] = useState(yorum.begeniSayisi || 0);
   const [begeniYukleniyor, setBegeniYukleniyor] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  
+  const MAX_LENGTH = 150;
+  const isLong = yorum.icerik && yorum.icerik.length > MAX_LENGTH;
+  const displayText = isLong && !expanded 
+    ? yorum.icerik.substring(0, MAX_LENGTH) + "..." 
+    : yorum.icerik;
 
   const handleBegeni = async () => {
     if (!isLoggedIn || begeniYukleniyor) return;
@@ -112,8 +120,16 @@ function YorumItem({
               {tarihStr}
             </span>
           </div>
-          <p className="text-sm text-[rgba(255,255,255,0.85)] mt-1">
-            {yorum.icerik}
+          <p className="text-sm text-[rgba(255,255,255,0.85)] mt-1 break-words">
+            {displayText}
+            {isLong && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="ml-1 text-[#6C5CE7] hover:text-[#00CEC9] transition-colors font-medium"
+              >
+                {expanded ? "daha az" : "daha fazlasını oku"}
+              </button>
+            )}
           </p>
           <div className="flex items-center gap-4 mt-2">
             <button
@@ -186,6 +202,7 @@ export function ActivityCard({
   const [yeniYorum, setYeniYorum] = useState("");
   const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false);
   const [yanitYapilan, setYanitYapilan] = useState<number | null>(null);
+  const [spoilerAcik, setSpoilerAcik] = useState(false);
 
   const handleBegeni = async () => {
     if (!isLoggedIn || begeniYukleniyor) return;
@@ -335,8 +352,9 @@ export function ActivityCard({
   );
 
   const renderYorumContent = () => {
-    const yorumMetni = veri?.yorumOzet || "";
+    const yorumMetni = (veri?.yorumOzet || "").trim();
     const isLongComment = yorumMetni.length > 100;
+    const isSpoiler = veri?.spoilerIceriyor === true;
 
     return (
       <div className="space-y-3">
@@ -364,17 +382,63 @@ export function ActivityCard({
           </div>
         </div>
         {yorumMetni && (
-          <div className="p-4 rounded-xl bg-[rgba(108,92,231,0.1)] border-l-2 border-[#6C5CE7]">
-            <p className="text-[rgba(255,255,255,0.85)] text-sm italic line-clamp-3">
-              "{yorumMetni}"
-            </p>
-            {isLongComment && (
-              <button
-                onClick={handleContentClick}
-                className="mt-2 text-xs text-[#6C5CE7] hover:text-[#00CEC9] transition-colors"
+          <div className={`relative p-4 rounded-xl border-l-2 overflow-hidden transition-all duration-300 ${
+            isSpoiler 
+              ? 'bg-gradient-to-r from-[rgba(255,107,107,0.08)] to-[rgba(255,107,107,0.02)] border-[#ff6b6b]/60' 
+              : 'bg-[rgba(108,92,231,0.1)] border-[#6C5CE7]'
+          }`}>
+            {isSpoiler && !spoilerAcik ? (
+              <div 
+                className="flex items-center justify-between cursor-pointer group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSpoilerAcik(true);
+                }}
               >
-                ...daha fazlasını oku
-              </button>
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-[rgba(255,107,107,0.15)]">
+                    <AlertTriangle size={14} className="text-[#ff6b6b]" />
+                  </div>
+                  <div>
+                    <span className="text-white/90 text-sm font-medium">Spoiler İçeriyor</span>
+                    <p className="text-white/40 text-xs mt-0.5">İçeriği görmek için tıklayın</p>
+                  </div>
+                </div>
+                <button className="px-3 py-1.5 rounded-lg bg-[rgba(255,107,107,0.1)] border border-[rgba(255,107,107,0.2)] text-[#ff6b6b] text-xs font-medium hover:bg-[rgba(255,107,107,0.2)] transition-all group-hover:scale-105">
+                  Göster
+                </button>
+              </div>
+            ) : (
+              <>
+                {isSpoiler && (
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle size={12} className="text-[#ff6b6b]/70" />
+                      <span className="text-[#ff6b6b]/70 text-xs font-medium uppercase tracking-wide">Spoiler</span>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSpoilerAcik(false);
+                      }}
+                      className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                    >
+                      Gizle
+                    </button>
+                  </div>
+                )}
+                <p className="text-[rgba(255,255,255,0.85)] text-sm italic break-words whitespace-pre-wrap leading-relaxed">
+                  "{isLongComment ? yorumMetni.substring(0, 150) + '...' : yorumMetni}"
+                </p>
+                {isLongComment && (
+                  <button
+                    onClick={handleContentClick}
+                    className="mt-2 text-xs text-[#6C5CE7] hover:text-[#00CEC9] transition-colors"
+                  >
+                    ...daha fazlasını oku
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
