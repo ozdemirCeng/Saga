@@ -1,33 +1,41 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, ArrowLeft, Loader2, CheckCircle, Sparkles } from 'lucide-react';
-import { authApi } from '../../services/api';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Mail, ArrowLeft, Loader2, CheckCircle, Sparkles } from "lucide-react";
+import { authApi } from "../../services/api";
 
 // ============================================
 // NEBULA UI COMPONENTS
 // ============================================
 
-function NebulaCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function NebulaCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}>
+    <div
+      className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}
+    >
       {children}
     </div>
   );
 }
 
-function NebulaInput({ 
-  type = 'text', 
-  placeholder, 
-  value, 
-  onChange, 
-  icon, 
-  required 
-}: { 
-  type?: string; 
-  placeholder?: string; 
-  value: string; 
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; 
-  icon?: React.ReactNode; 
+function NebulaInput({
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  icon,
+  required,
+}: {
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  icon?: React.ReactNode;
   required?: boolean;
 }) {
   return (
@@ -43,29 +51,37 @@ function NebulaInput({
         value={value}
         onChange={onChange}
         required={required}
-        className={`w-full px-4 py-3.5 rounded-xl text-white text-sm bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/50 focus:border-transparent placeholder:text-[rgba(255,255,255,0.4)] transition-all ${icon ? 'pl-12' : ''}`}
+        className={`w-full px-4 py-3.5 rounded-xl text-white text-sm bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/50 focus:border-transparent placeholder:text-[rgba(255,255,255,0.4)] transition-all ${
+          icon ? "pl-12" : ""
+        }`}
       />
     </div>
   );
 }
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+
+  // Debug log
+  console.log("=== FORGOT PAGE ===");
+  console.log("Current URL:", window.location.href);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       await authApi.forgotPassword(email);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+      setError(
+        err.response?.data?.message || "Bir hata oluştu. Lütfen tekrar deneyin."
+      );
     } finally {
       setLoading(false);
     }
@@ -82,16 +98,24 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={backgroundStyle}
+      >
         <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#00b894]/10 blur-3xl animate-float" />
-        <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-        
+        <div
+          className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float"
+          style={{ animationDelay: "-3s" }}
+        />
+
         <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#00b894]/20 flex items-center justify-center">
             <CheckCircle size={32} className="text-[#00b894]" />
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">E-posta Gönderildi</h1>
+          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">
+            E-posta Gönderildi
+          </h1>
           <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6">
             Eğer bu e-posta adresi kayıtlıysa, şifre sıfırlama linki gönderildi.
             Lütfen gelen kutunuzu kontrol edin.
@@ -102,7 +126,7 @@ export default function ForgotPasswordPage() {
           </p>
 
           <button
-            onClick={() => navigate('/giris')}
+            onClick={() => navigate("/giris")}
             className="w-full py-3.5 bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white font-semibold text-sm rounded-xl shadow-lg shadow-[#6C5CE7]/25 hover:shadow-xl hover:shadow-[#6C5CE7]/30 transition-all duration-300 active:scale-[0.98]"
           >
             Giriş Sayfasına Dön
@@ -113,17 +137,25 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={backgroundStyle}
+    >
       <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" />
-      <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-      
+      <div
+        className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float"
+        style={{ animationDelay: "-3s" }}
+      />
+
       <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
         {/* Logo */}
         <div className="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#6C5CE7] to-[#a29bfe] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/25 animate-pulse-glow">
           <Sparkles size={28} className="text-white" />
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">Şifremi Unuttum</h1>
+        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">
+          Şifremi Unuttum
+        </h1>
         <p className="text-[rgba(255,255,255,0.5)] text-sm mb-8">
           E-posta adresinizi girin, size şifre sıfırlama linki gönderelim.
         </p>
@@ -156,7 +188,7 @@ export default function ForgotPasswordPage() {
                 Gönderiliyor...
               </>
             ) : (
-              'Şifre Sıfırlama Linki Gönder'
+              "Şifre Sıfırlama Linki Gönder"
             )}
           </button>
 

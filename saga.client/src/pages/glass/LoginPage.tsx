@@ -1,33 +1,41 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Loader2, Sparkles } from 'lucide-react';
-import { supabase } from '../../services/supabase';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Mail, Lock, Loader2, Sparkles } from "lucide-react";
+import { supabase } from "../../services/supabase";
 
 // ============================================
 // NEBULA UI COMPONENTS
 // ============================================
 
-function NebulaCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function NebulaCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}>
+    <div
+      className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}
+    >
       {children}
     </div>
   );
 }
 
-function NebulaInput({ 
-  type = 'text', 
-  placeholder, 
-  value, 
-  onChange, 
-  icon, 
-  required 
-}: { 
-  type?: string; 
-  placeholder?: string; 
-  value: string; 
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; 
-  icon?: React.ReactNode; 
+function NebulaInput({
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  icon,
+  required,
+}: {
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  icon?: React.ReactNode;
   required?: boolean;
 }) {
   return (
@@ -43,23 +51,25 @@ function NebulaInput({
         value={value}
         onChange={onChange}
         required={required}
-        className={`w-full px-4 py-3.5 rounded-xl text-white text-sm bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/50 focus:border-transparent placeholder:text-[rgba(255,255,255,0.4)] transition-all ${icon ? 'pl-12' : ''}`}
+        className={`w-full px-4 py-3.5 rounded-xl text-white text-sm bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/50 focus:border-transparent placeholder:text-[rgba(255,255,255,0.4)] transition-all ${
+          icon ? "pl-12" : ""
+        }`}
       />
     </div>
   );
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -68,9 +78,9 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-      navigate('/');
+      navigate("/");
     } catch (err: any) {
-      setError(err.message || 'Giriş yapılırken hata oluştu.');
+      setError(err.message || "Giriş yapılırken hata oluştu.");
     } finally {
       setLoading(false);
     }
@@ -90,16 +100,23 @@ export default function LoginPage() {
     >
       {/* Floating orbs */}
       <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" />
-      <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-      
+      <div
+        className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float"
+        style={{ animationDelay: "-3s" }}
+      />
+
       <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
         {/* Logo */}
         <div className="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#6C5CE7] to-[#a29bfe] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/25 animate-pulse-glow">
           <Sparkles size={28} className="text-white" />
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">Hoş Geldiniz</h1>
-        <p className="text-[rgba(255,255,255,0.5)] text-sm mb-8">Nebula'ya giriş yapın ve keşfetmeye başlayın.</p>
+        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">
+          Hoş Geldiniz
+        </h1>
+        <p className="text-[rgba(255,255,255,0.5)] text-sm mb-8">
+          Nebula'ya giriş yapın ve keşfetmeye başlayın.
+        </p>
 
         {/* Error Message */}
         {error && (
@@ -149,13 +166,13 @@ export default function LoginPage() {
                 Giriş Yapılıyor...
               </>
             ) : (
-              'Giriş Yap'
+              "Giriş Yap"
             )}
           </button>
 
           <button
             type="button"
-            onClick={() => navigate('/kayit')}
+            onClick={() => navigate("/kayit")}
             className="
               w-full py-3.5
               bg-[rgba(255,255,255,0.05)] text-white
@@ -172,7 +189,7 @@ export default function LoginPage() {
         </form>
 
         <button
-          onClick={() => navigate('/sifre-sifirla')}
+          onClick={() => navigate("/sifremi-unuttum")}
           className="mt-6 text-sm text-[rgba(255,255,255,0.5)] hover:text-[#6C5CE7] transition-colors cursor-pointer bg-transparent border-none"
         >
           Şifremi Unuttum

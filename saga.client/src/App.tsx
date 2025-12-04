@@ -41,8 +41,8 @@ function App() {
                                 {/* Auth Routes - No Layout */}
                                 <Route path="/giris" element={<LoginPage />} />
                                 <Route path="/kayit" element={<RegisterPage />} />
-                                <Route path="/sifre-sifirla" element={<ForgotPasswordPage />} />
-                                <Route path="/sifre-yenile" element={<ResetPasswordPage />} />
+                                <Route path="/sifremi-unuttum" element={<ForgotPasswordPage />} />
+                                <Route path="/sifre-sifirla" element={<ResetPasswordPage />} />
 
                                 {/* Main App Routes with Glass Layout */}
                                 <Route element={<GlassLayout />}>

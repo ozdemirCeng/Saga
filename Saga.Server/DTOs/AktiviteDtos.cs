@@ -30,6 +30,7 @@ namespace Saga.Server.DTOs
         public string AktiviteTuru { get; set; } = null!; // puanlama, yorum, listeye_ekleme, takip, durum_guncelleme
         public long? IcerikId { get; set; }
         public string? IcerikTur { get; set; }
+        public long? YorumId { get; set; } // Yorum aktivitesi için yorum ID'si
         public DateTime OlusturulmaZamani { get; set; }
         
         // İstatistikler

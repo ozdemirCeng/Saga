@@ -36,6 +36,9 @@ namespace Saga.Server.Data
         // Oyuncu tabloları
         public DbSet<Oyuncu> Oyuncular { get; set; }
         public DbSet<IcerikOyuncu> IcerikOyunculari { get; set; }
+        
+        // Şifre sıfırlama tokenları
+        public DbSet<SifreSifirlamaToken> SifreSifirlamaTokenlari { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

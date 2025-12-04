@@ -270,6 +270,7 @@ namespace Saga.Server.Controllers
                 KullaniciAdi = y.Kullanici.KullaniciAdi,
                 KullaniciAvatar = y.Kullanici.AvatarUrl,
                 Baslik = y.Baslik,
+                Icerik = y.IcerikMetni,
                 IcerikOzet = y.IcerikMetni.Length > 150 ? y.IcerikMetni.Substring(0, 150) + "..." : y.IcerikMetni,
                 Puan = y.Puan,
                 SpoilerIceriyor = y.SpoilerIceriyor,
@@ -287,6 +288,7 @@ namespace Saga.Server.Controllers
                         KullaniciAdi = r.Kullanici.KullaniciAdi,
                         KullaniciAvatar = r.Kullanici.AvatarUrl,
                         Baslik = r.Baslik,
+                        Icerik = r.IcerikMetni,
                         IcerikOzet = r.IcerikMetni,
                         Puan = r.Puan,
                         SpoilerIceriyor = r.SpoilerIceriyor,
@@ -330,7 +332,10 @@ namespace Saga.Server.Controllers
                     // Beğeniyi kaldır
                     _context.YorumBegenileri.Remove(mevcutBegeni);
                     await _context.SaveChangesAsync();
-                    return Ok(new { message = "Beğeni kaldırıldı", begendi = false, begeniSayisi = yorum.Begenenler.Count - 1 });
+                    
+                    // Güncel beğeni sayısını al
+                    var guncelSayi = await _context.YorumBegenileri.CountAsync(b => b.YorumId == id);
+                    return Ok(new { message = "Beğeni kaldırıldı", begendi = false, begeniSayisi = guncelSayi });
                 }
                 else
                 {
@@ -363,7 +368,10 @@ namespace Saga.Server.Controllers
                     }
                     
                     await _context.SaveChangesAsync();
-                    return Ok(new { message = "Yorum beğenildi", begendi = true, begeniSayisi = yorum.Begenenler.Count + 1 });
+                    
+                    // Güncel beğeni sayısını al
+                    var guncelSayi = await _context.YorumBegenileri.CountAsync(b => b.YorumId == id);
+                    return Ok(new { message = "Yorum beğenildi", begendi = true, begeniSayisi = guncelSayi });
                 }
             }
             catch (Exception ex)

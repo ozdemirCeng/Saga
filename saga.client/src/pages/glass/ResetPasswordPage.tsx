@@ -1,15 +1,32 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Lock, ArrowLeft, Loader2, CheckCircle, Eye, EyeOff, AlertTriangle, Sparkles } from 'lucide-react';
-import { authApi } from '../../services/api';
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import {
+  Lock,
+  ArrowLeft,
+  Loader2,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
+import { authApi } from "../../services/api";
 
 // ============================================
 // NEBULA UI COMPONENTS
 // ============================================
 
-function NebulaCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function NebulaCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}>
+    <div
+      className={`p-8 rounded-2xl bg-[rgba(20,20,35,0.75)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-xl ${className}`}
+    >
       {children}
     </div>
   );
@@ -17,40 +34,45 @@ function NebulaCard({ children, className = '' }: { children: React.ReactNode; c
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [token, setToken] = useState('');
+  const [tokenChecked, setTokenChecked] = useState(false);
   const navigate = useNavigate();
 
+  // URL'den token'ı al
+  const token =
+    searchParams.get("access_token") || searchParams.get("token") || "";
+
   useEffect(() => {
-    // URL'den token'ı al (Supabase recovery link formatı)
-    const accessToken = searchParams.get('access_token') || searchParams.get('token');
-    if (accessToken) {
-      setToken(accessToken);
-    }
-  }, [searchParams]);
+    // Debug: Token ve URL'yi konsola yaz
+    console.log("=== RESET PAGE ===");
+    console.log("Token:", token);
+    setTokenChecked(true);
+  }, [token, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (password !== confirmPassword) {
-      setError('Şifreler eşleşmiyor.');
+      setError("Şifreler eşleşmiyor.");
       return;
     }
 
     if (password.length < 6) {
-      setError('Şifre en az 6 karakter olmalıdır.');
+      setError("Şifre en az 6 karakter olmalıdır.");
       return;
     }
 
     if (!token) {
-      setError('Geçersiz veya eksik token. Lütfen şifre sıfırlama linkini tekrar kullanın.');
+      setError(
+        "Geçersiz veya eksik token. Lütfen şifre sıfırlama linkini tekrar kullanın."
+      );
       return;
     }
 
@@ -64,7 +86,10 @@ export default function ResetPasswordPage() {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Şifre sıfırlama başarısız. Token süresi dolmuş olabilir.');
+      setError(
+        err.response?.data?.message ||
+          "Şifre sıfırlama başarısız. Token süresi dolmuş olabilir."
+      );
     } finally {
       setLoading(false);
     }
@@ -79,26 +104,34 @@ export default function ResetPasswordPage() {
     `,
   };
 
-  // Token yoksa hata göster
-  if (!token && !success) {
+  // Token yoksa ve kontrol tamamlandıysa hata göster
+  if (!token && tokenChecked && !success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={backgroundStyle}
+      >
         <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#fd79a8]/10 blur-3xl animate-float" />
-        <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-        
+        <div
+          className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float"
+          style={{ animationDelay: "-3s" }}
+        />
+
         <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#fd79a8]/20 flex items-center justify-center">
             <AlertTriangle size={32} className="text-[#fd79a8]" />
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">Geçersiz Link</h1>
+          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">
+            Geçersiz Link
+          </h1>
           <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6">
-            Şifre sıfırlama linki geçersiz veya süresi dolmuş.
-            Lütfen yeni bir şifre sıfırlama talebi oluşturun.
+            Şifre sıfırlama linki geçersiz veya süresi dolmuş. Lütfen yeni bir
+            şifre sıfırlama talebi oluşturun.
           </p>
 
           <Link
-            to="/sifre-sifirla"
+            to="/sifremi-unuttum"
             className="w-full py-3.5 bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white font-semibold text-sm rounded-xl shadow-lg shadow-[#6C5CE7]/25 hover:shadow-xl hover:shadow-[#6C5CE7]/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center"
           >
             Yeni Şifre Sıfırlama Talebi
@@ -117,22 +150,31 @@ export default function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={backgroundStyle}
+      >
         <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#00b894]/10 blur-3xl animate-float" />
-        <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-        
+        <div
+          className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float"
+          style={{ animationDelay: "-3s" }}
+        />
+
         <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#00b894]/20 flex items-center justify-center">
             <CheckCircle size={32} className="text-[#00b894]" />
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">Şifre Güncellendi</h1>
+          <h1 className="text-2xl font-bold text-white mb-3 font-['Outfit']">
+            Şifre Güncellendi
+          </h1>
           <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6">
-            Şifreniz başarıyla değiştirildi. Artık yeni şifrenizle giriş yapabilirsiniz.
+            Şifreniz başarıyla değiştirildi. Artık yeni şifrenizle giriş
+            yapabilirsiniz.
           </p>
 
           <button
-            onClick={() => navigate('/giris')}
+            onClick={() => navigate("/giris")}
             className="w-full py-3.5 bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white font-semibold text-sm rounded-xl shadow-lg shadow-[#6C5CE7]/25 hover:shadow-xl hover:shadow-[#6C5CE7]/30 transition-all duration-300 active:scale-[0.98]"
           >
             Giriş Yap
@@ -143,17 +185,25 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={backgroundStyle}>
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={backgroundStyle}
+    >
       <div className="fixed top-20 left-20 w-64 h-64 rounded-full bg-[#6C5CE7]/10 blur-3xl animate-float" />
-      <div className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
-      
+      <div
+        className="fixed bottom-20 right-20 w-80 h-80 rounded-full bg-[#00CEC9]/10 blur-3xl animate-float"
+        style={{ animationDelay: "-3s" }}
+      />
+
       <NebulaCard className="w-full max-w-[420px] text-center animate-scale-in relative z-10">
         {/* Logo */}
         <div className="w-14 h-14 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#6C5CE7] to-[#a29bfe] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/25 animate-pulse-glow">
           <Sparkles size={28} className="text-white" />
         </div>
 
-        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">Yeni Şifre Belirle</h1>
+        <h1 className="text-2xl font-bold text-white mb-2 font-['Outfit']">
+          Yeni Şifre Belirle
+        </h1>
         <p className="text-[rgba(255,255,255,0.5)] text-sm mb-8">
           Hesabınız için yeni bir şifre belirleyin.
         </p>
@@ -172,7 +222,7 @@ export default function ResetPasswordPage() {
               <Lock size={18} />
             </div>
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="Yeni Şifre (en az 6 karakter)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -195,7 +245,7 @@ export default function ResetPasswordPage() {
               <Lock size={18} />
             </div>
             <input
-              type={showConfirmPassword ? 'text' : 'password'}
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="Şifre Tekrar"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -223,7 +273,7 @@ export default function ResetPasswordPage() {
                 Şifre Güncelleniyor...
               </>
             ) : (
-              'Şifreyi Güncelle'
+              "Şifreyi Güncelle"
             )}
           </button>
 

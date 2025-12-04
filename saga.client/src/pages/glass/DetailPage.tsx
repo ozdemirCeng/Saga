@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
 import {
   Star,
   Film,
@@ -24,73 +24,118 @@ import {
   Edit3,
   Trash2,
   MoreHorizontal,
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { icerikApi, yorumApi, puanlamaApi, kutuphaneApi, listeApi } from '../../services/api';
-import type { Icerik, Yorum, YorumCreateDto, Liste } from '../../services/api';
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  icerikApi,
+  yorumApi,
+  puanlamaApi,
+  kutuphaneApi,
+  listeApi,
+} from "../../services/api";
+import type { Icerik, Yorum, YorumCreateDto, Liste } from "../../services/api";
 
 // ============================================
 // NEBULA UI COMPONENTS
 // ============================================
 
-function GlassCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`p-5 rounded-2xl bg-[rgba(20,20,35,0.65)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-lg ${className}`}>
+    <div
+      className={`p-5 rounded-2xl bg-[rgba(20,20,35,0.65)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] shadow-lg ${className}`}
+    >
       {children}
     </div>
   );
 }
 
-function GlassPanel({ children, className = '', padding = 'md' }: { children: React.ReactNode; className?: string; padding?: 'sm' | 'md' | 'lg' }) {
-  const paddings = { sm: 'p-3', md: 'p-5', lg: 'p-6' };
+function GlassPanel({
+  children,
+  className = "",
+  padding = "md",
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  padding?: "sm" | "md" | "lg";
+  id?: string;
+}) {
+  const paddings = { sm: "p-3", md: "p-5", lg: "p-6" };
   return (
-    <div className={`rounded-2xl bg-[rgba(30,30,50,0.5)] backdrop-blur-xl border border-[rgba(255,255,255,0.06)] ${paddings[padding]} ${className}`}>
+    <div
+      id={id}
+      className={`rounded-2xl bg-[rgba(30,30,50,0.5)] backdrop-blur-xl border border-[rgba(255,255,255,0.06)] ${paddings[padding]} ${className}`}
+    >
       {children}
     </div>
   );
 }
 
-function Button({ 
-  children, 
-  variant = 'primary',
-  size = 'md',
-  className = '',
+function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  className = "",
   disabled = false,
-  onClick 
-}: { 
-  children: React.ReactNode; 
-  variant?: 'primary' | 'secondary' | 'ghost' | 'success' | 'danger';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
+  onClick,
+}: {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary" | "ghost" | "success" | "danger";
+  size?: "sm" | "md" | "lg" | "icon";
   className?: string;
   disabled?: boolean;
   onClick?: (e: React.MouseEvent) => void;
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles =
+    "inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
   const variantStyles = {
-    primary: 'bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white hover:shadow-lg hover:shadow-[#6C5CE7]/25',
-    secondary: 'bg-[rgba(255,255,255,0.08)] text-white border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.12)]',
-    ghost: 'bg-transparent text-[rgba(255,255,255,0.7)] hover:text-white hover:bg-[rgba(255,255,255,0.05)]',
-    success: 'bg-[#00b894] text-white hover:bg-[#00b894]/80',
-    danger: 'bg-[#fd79a8] text-white hover:bg-[#fd79a8]/80'
+    primary:
+      "bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white hover:shadow-lg hover:shadow-[#6C5CE7]/25",
+    secondary:
+      "bg-[rgba(255,255,255,0.08)] text-white border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.12)]",
+    ghost:
+      "bg-transparent text-[rgba(255,255,255,0.7)] hover:text-white hover:bg-[rgba(255,255,255,0.05)]",
+    success: "bg-[#00b894] text-white hover:bg-[#00b894]/80",
+    danger: "bg-[#fd79a8] text-white hover:bg-[#fd79a8]/80",
   };
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs gap-1',
-    md: 'px-4 py-2 text-sm gap-2',
-    lg: 'px-6 py-3 text-base gap-2',
-    icon: 'w-10 h-10 p-0'
+    sm: "px-3 py-1.5 text-xs gap-1",
+    md: "px-4 py-2 text-sm gap-2",
+    lg: "px-6 py-3 text-base gap-2",
+    icon: "w-10 h-10 p-0",
   };
 
   return (
-    <button onClick={onClick} disabled={disabled} className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+    >
       {children}
     </button>
   );
 }
 
-function StarRating({ value, onChange, size = 'md', readonly = false }: { value: number; onChange?: (val: number) => void; size?: 'sm' | 'md' | 'lg'; readonly?: boolean }) {
+function StarRating({
+  value,
+  onChange,
+  size = "md",
+  readonly = false,
+}: {
+  value: number;
+  onChange?: (val: number) => void;
+  size?: "sm" | "md" | "lg";
+  readonly?: boolean;
+}) {
   const sizes = { sm: 14, md: 20, lg: 26 };
   const starSize = sizes[size];
-  
+
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
@@ -99,11 +144,17 @@ function StarRating({ value, onChange, size = 'md', readonly = false }: { value:
           type="button"
           onClick={() => !readonly && onChange?.(star)}
           disabled={readonly}
-          className={`transition-transform ${!readonly ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+          className={`transition-transform ${
+            !readonly ? "hover:scale-110 cursor-pointer" : "cursor-default"
+          }`}
         >
           <Star
             size={starSize}
-            className={star <= value ? 'text-[#f39c12] fill-[#f39c12]' : 'text-[rgba(255,255,255,0.2)]'}
+            className={
+              star <= value
+                ? "text-[#f39c12] fill-[#f39c12]"
+                : "text-[rgba(255,255,255,0.2)]"
+            }
           />
         </button>
       ))}
@@ -111,25 +162,47 @@ function StarRating({ value, onChange, size = 'md', readonly = false }: { value:
   );
 }
 
-function RatingBadge({ rating, size = 'md' }: { rating: number; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'text-xs px-1.5 py-0.5', md: 'text-sm px-2 py-1', lg: 'text-base px-3 py-1.5' };
+function RatingBadge({
+  rating,
+  size = "md",
+}: {
+  rating: number;
+  size?: "sm" | "md" | "lg";
+}) {
+  const sizes = {
+    sm: "text-xs px-1.5 py-0.5",
+    md: "text-sm px-2 py-1",
+    lg: "text-base px-3 py-1.5",
+  };
   return (
-    <div className={`inline-flex items-center gap-1 bg-[#6C5CE7]/20 backdrop-blur-md rounded-md ${sizes[size]}`}>
-      <Star size={size === 'sm' ? 10 : size === 'md' ? 12 : 14} className="text-[#6C5CE7] fill-[#6C5CE7]" />
+    <div
+      className={`inline-flex items-center gap-1 bg-[#6C5CE7]/20 backdrop-blur-md rounded-md ${sizes[size]}`}
+    >
+      <Star
+        size={size === "sm" ? 10 : size === "md" ? 12 : 14}
+        className="text-[#6C5CE7] fill-[#6C5CE7]"
+      />
       <span className="text-white font-semibold">{rating.toFixed(1)}</span>
     </div>
   );
 }
 
 // Genişletilebilir açıklama komponenti
-function ExpandableDescription({ text, maxLength = 300 }: { text: string; maxLength?: number }) {
+function ExpandableDescription({
+  text,
+  maxLength = 300,
+}: {
+  text: string;
+  maxLength?: number;
+}) {
   const [expanded, setExpanded] = useState(false);
-  
+
   if (!text) return null;
-  
+
   const needsTruncation = text.length > maxLength;
-  const displayText = expanded || !needsTruncation ? text : `${text.substring(0, maxLength)}...`;
-  
+  const displayText =
+    expanded || !needsTruncation ? text : `${text.substring(0, maxLength)}...`;
+
   return (
     <div className="mb-6">
       <p className="text-[#8E8E93] text-sm leading-relaxed whitespace-pre-line">
@@ -157,7 +230,19 @@ function ExpandableDescription({ text, maxLength = 300 }: { text: string; maxLen
   );
 }
 
-function Textarea({ placeholder, value, onChange, rows = 4, className = '' }: { placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; rows?: number; className?: string }) {
+function Textarea({
+  placeholder,
+  value,
+  onChange,
+  rows = 4,
+  className = "",
+}: {
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  rows?: number;
+  className?: string;
+}) {
   return (
     <textarea
       placeholder={placeholder}
@@ -182,22 +267,34 @@ interface CommentCardProps {
   currentUserId?: string;
 }
 
-function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }: CommentCardProps) {
+function CommentCard({
+  yorum,
+  onLike,
+  onReply,
+  onEdit,
+  onDelete,
+  currentUserId,
+}: CommentCardProps) {
   const navigate = useNavigate();
   const [showSpoiler, setShowSpoiler] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(yorum.icerik || '');
+  const [editContent, setEditContent] = useState(yorum.icerik || "");
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const MAX_LENGTH = 150; // Maksimum karakter sayısı
 
   const tarihStr = formatDistanceToNow(new Date(yorum.olusturulmaZamani), {
     addSuffix: true,
     locale: tr,
   });
 
-  const content = yorum.icerik || yorum.icerikOzet || '';
+  // Tam içerik: icerik alanını kullan, yoksa icerikOzet'i kullan
+  const content = yorum.icerik || yorum.icerikOzet || "";
+  const isLongContent = content.length > MAX_LENGTH;
   const isOwner = currentUserId && yorum.kullaniciId === currentUserId;
 
   const handleEditSave = async () => {
@@ -207,7 +304,7 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
       await onEdit(yorum.id, editContent.trim());
       setIsEditing(false);
     } catch (error) {
-      console.error('Yorum güncelleme hatası:', error);
+      console.error("Yorum güncelleme hatası:", error);
     } finally {
       setEditLoading(false);
     }
@@ -215,12 +312,12 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
 
   const handleDelete = async () => {
     if (!onDelete) return;
-    if (!window.confirm('Bu yorumu silmek istediğinize emin misiniz?')) return;
+    if (!window.confirm("Bu yorumu silmek istediğinize emin misiniz?")) return;
     setDeleteLoading(true);
     try {
       await onDelete(yorum.id);
     } catch (error) {
-      console.error('Yorum silme hatası:', error);
+      console.error("Yorum silme hatası:", error);
     } finally {
       setDeleteLoading(false);
       setShowMenu(false);
@@ -228,7 +325,11 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
   };
 
   return (
-    <GlassPanel padding="md" className="mb-4">
+    <GlassPanel
+      padding="md"
+      className="mb-4 transition-all duration-300"
+      id={`yorum-${yorum.id}`}
+    >
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div
@@ -236,7 +337,11 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
           onClick={() => navigate(`/profil/${yorum.kullaniciAdi}`)}
         >
           {yorum.kullaniciAvatar ? (
-            <img src={yorum.kullaniciAvatar} alt={yorum.kullaniciAdi} className="w-full h-full object-cover" />
+            <img
+              src={yorum.kullaniciAvatar}
+              alt={yorum.kullaniciAdi}
+              className="w-full h-full object-cover"
+            />
           ) : (
             <span className="text-white font-semibold text-sm">
               {yorum.kullaniciAdi?.charAt(0).toUpperCase()}
@@ -254,7 +359,9 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
             {yorum.puan && (
               <div className="flex items-center gap-1">
                 <Star size={14} className="text-[#f39c12] fill-[#f39c12]" />
-                <span className="text-sm font-semibold text-[#f39c12]">{yorum.puan}</span>
+                <span className="text-sm font-semibold text-[#f39c12]">
+                  {yorum.puan}
+                </span>
               </div>
             )}
             {yorum.spoilerIceriyor && (
@@ -265,7 +372,7 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
           </div>
           <p className="text-xs text-[#8E8E93]">{tarihStr}</p>
         </div>
-        
+
         {/* Kendi yorumu ise düzenleme/silme menüsü */}
         {isOwner && (onEdit || onDelete) && (
           <div className="relative">
@@ -275,10 +382,13 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
             >
               <MoreHorizontal size={16} />
             </button>
-            
+
             {showMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowMenu(false)}
+                />
                 <div className="absolute right-0 top-full mt-1 z-50 bg-[rgba(20,20,35,0.98)] backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-xl min-w-[140px] animate-scale-in">
                   {onEdit && (
                     <button
@@ -298,7 +408,11 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
                       disabled={deleteLoading}
                       className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-[#fd79a8] hover:bg-[#fd79a8]/10 transition-colors disabled:opacity-50"
                     >
-                      {deleteLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      {deleteLoading ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
                       Sil
                     </button>
                   )}
@@ -329,7 +443,7 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
               size="sm"
               onClick={() => {
                 setIsEditing(false);
-                setEditContent(yorum.icerik || '');
+                setEditContent(yorum.icerik || "");
               }}
             >
               İptal
@@ -345,7 +459,7 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
                   Kaydediliyor
                 </>
               ) : (
-                'Kaydet'
+                "Kaydet"
               )}
             </Button>
           </div>
@@ -357,11 +471,27 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
         >
           <div className="flex items-center gap-2 text-[#fd79a8]">
             <AlertTriangle size={16} />
-            <span className="text-sm font-medium">Spoiler içeriyor. Görmek için tıklayın.</span>
+            <span className="text-sm font-medium">
+              Spoiler içeriyor. Görmek için tıklayın.
+            </span>
           </div>
         </div>
       ) : (
-        <p className="text-[#8E8E93] text-sm whitespace-pre-line">{content}</p>
+        <div>
+          <p className="text-[#8E8E93] text-sm whitespace-pre-line break-words">
+            {isExpanded || content.length <= MAX_LENGTH
+              ? content
+              : `${content.slice(0, MAX_LENGTH)}...`}
+          </p>
+          {content.length > MAX_LENGTH && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-[#6C5CE7] text-sm font-medium mt-2 hover:underline"
+            >
+              {isExpanded ? "Daha az göster" : "Daha fazlasını oku"}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Actions */}
@@ -369,10 +499,15 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
         <button
           onClick={() => onLike(yorum.id)}
           className={`flex items-center gap-1.5 text-sm transition-colors ${
-            yorum.kullaniciBegendiMi ? 'text-[#fd79a8]' : 'text-[#8E8E93] hover:text-[#fd79a8]'
+            yorum.kullaniciBegendiMi
+              ? "text-[#fd79a8]"
+              : "text-[#8E8E93] hover:text-[#fd79a8]"
           }`}
         >
-          <Heart size={16} fill={yorum.kullaniciBegendiMi ? 'currentColor' : 'none'} />
+          <Heart
+            size={16}
+            fill={yorum.kullaniciBegendiMi ? "currentColor" : "none"}
+          />
           <span>{yorum.begeniSayisi}</span>
         </button>
         {onReply && (
@@ -399,9 +534,9 @@ function CommentCard({ yorum, onLike, onReply, onEdit, onDelete, currentUserId }
           {showReplies && (
             <div className="mt-3 pl-4 border-l-2 border-white/10">
               {yorum.yanitlar.map((yanit) => (
-                <CommentCard 
-                  key={yanit.id} 
-                  yorum={yanit} 
+                <CommentCard
+                  key={yanit.id}
+                  yorum={yanit}
                   onLike={onLike}
                   onEdit={onEdit}
                   onDelete={onDelete}
@@ -427,23 +562,28 @@ interface CommentFormProps {
   onCancel?: () => void;
 }
 
-function CommentForm({ icerikId, onSubmit, replyTo, onCancel }: CommentFormProps) {
+function CommentForm({
+  icerikId,
+  onSubmit,
+  replyTo,
+  onCancel,
+}: CommentFormProps) {
   const { user, requireAuth } = useAuth();
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState("");
   const [rating, setRating] = useState(0);
   const [spoiler, setSpoiler] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
-    if (!requireAuth('yorum yapmak')) return;
+    if (!requireAuth("yorum yapmak")) return;
     if (!content.trim()) {
-      setError('Yorum içeriği boş olamaz.');
+      setError("Yorum içeriği boş olamaz.");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const dto: YorumCreateDto = {
@@ -456,11 +596,11 @@ function CommentForm({ icerikId, onSubmit, replyTo, onCancel }: CommentFormProps
 
       const yeniYorum = await yorumApi.create(dto);
       onSubmit(yeniYorum);
-      setContent('');
+      setContent("");
       setRating(0);
       setSpoiler(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Yorum kaydedilemedi.');
+      setError(err.response?.data?.message || "Yorum kaydedilemedi.");
     } finally {
       setLoading(false);
     }
@@ -469,8 +609,10 @@ function CommentForm({ icerikId, onSubmit, replyTo, onCancel }: CommentFormProps
   if (!user) {
     return (
       <GlassPanel padding="md" className="text-center">
-        <p className="text-[#8E8E93] mb-3">Yorum yapmak için giriş yapmalısınız.</p>
-        <Button onClick={() => requireAuth('yorum yapmak')}>Giriş Yap</Button>
+        <p className="text-[#8E8E93] mb-3">
+          Yorum yapmak için giriş yapmalısınız.
+        </p>
+        <Button onClick={() => requireAuth("yorum yapmak")}>Giriş Yap</Button>
       </GlassPanel>
     );
   }
@@ -478,7 +620,7 @@ function CommentForm({ icerikId, onSubmit, replyTo, onCancel }: CommentFormProps
   return (
     <GlassPanel padding="md">
       <h3 className="font-semibold text-white mb-4">
-        {replyTo ? 'Yanıt Yaz' : 'Yorum Yap'}
+        {replyTo ? "Yanıt Yaz" : "Yorum Yap"}
       </h3>
 
       {error && (
@@ -553,29 +695,37 @@ interface LibraryDropdownProps {
   loading?: boolean;
 }
 
-function LibraryDropdown({ icerikTur, currentStatus, onChange, onRemove, loading }: LibraryDropdownProps) {
+function LibraryDropdown({
+  icerikTur,
+  currentStatus,
+  onChange,
+  onRemove,
+  loading,
+}: LibraryDropdownProps) {
   const [open, setOpen] = useState(false);
 
   // Backend enum değerleri: izlendi, izlenecek, okundu, okunacak, devam_ediyor
   const filmStatuses = [
-    { value: 'devam_ediyor', label: 'İzleniyor', icon: <Play size={16} /> },
-    { value: 'izlendi', label: 'İzlendi', icon: <Check size={16} /> },
-    { value: 'izlenecek', label: 'İzlenecek', icon: <Eye size={16} /> },
+    { value: "devam_ediyor", label: "İzleniyor", icon: <Play size={16} /> },
+    { value: "izlendi", label: "İzlendi", icon: <Check size={16} /> },
+    { value: "izlenecek", label: "İzlenecek", icon: <Eye size={16} /> },
   ];
 
   const kitapStatuses = [
-    { value: 'devam_ediyor', label: 'Okunuyor', icon: <BookOpen size={16} /> },
-    { value: 'okundu', label: 'Okundu', icon: <Check size={16} /> },
-    { value: 'okunacak', label: 'Okunacak', icon: <BookMarked size={16} /> },
+    { value: "devam_ediyor", label: "Okunuyor", icon: <BookOpen size={16} /> },
+    { value: "okundu", label: "Okundu", icon: <Check size={16} /> },
+    { value: "okunacak", label: "Okunacak", icon: <BookMarked size={16} /> },
   ];
 
-  const statuses = icerikTur === 'film' ? filmStatuses : kitapStatuses;
-  const currentLabel = statuses.find((s) => s.value === currentStatus)?.label || 'Kütüphaneye Ekle';
+  const statuses = icerikTur === "film" ? filmStatuses : kitapStatuses;
+  const currentLabel =
+    statuses.find((s) => s.value === currentStatus)?.label ||
+    "Kütüphaneye Ekle";
 
   return (
     <div className="relative">
       <Button
-        variant={currentStatus ? 'success' : 'primary'}
+        variant={currentStatus ? "success" : "primary"}
         onClick={() => setOpen(!open)}
         disabled={loading}
       >
@@ -603,15 +753,15 @@ function LibraryDropdown({ icerikTur, currentStatus, onChange, onRemove, loading
                 }}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
                   currentStatus === status.value
-                    ? 'bg-[#6C5CE7]/20 text-[#6C5CE7]'
-                    : 'text-white hover:bg-white/10'
+                    ? "bg-[#6C5CE7]/20 text-[#6C5CE7]"
+                    : "text-white hover:bg-white/10"
                 }`}
               >
                 {status.icon}
                 {status.label}
               </button>
             ))}
-            
+
             {/* Kütüphaneden Kaldır */}
             {currentStatus && onRemove && (
               <>
@@ -664,7 +814,7 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
         setListeler(userListeler);
         setIcerikListeleri(icerikListeler.map((l: Liste) => l.id));
       } catch (err) {
-        console.error('Liste yükleme hatası:', err);
+        console.error("Liste yükleme hatası:", err);
       } finally {
         setLoading(false);
       }
@@ -673,7 +823,7 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
   }, [user, open, icerikId]);
 
   const handleToggleListe = async (listeId: number) => {
-    if (!requireAuth('listeye eklemek')) return;
+    if (!requireAuth("listeye eklemek")) return;
 
     setActionLoading(listeId);
     try {
@@ -685,7 +835,7 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
         setIcerikListeleri((prev) => [...prev, listeId]);
       }
     } catch (err) {
-      console.error('Liste güncelleme hatası:', err);
+      console.error("Liste güncelleme hatası:", err);
     } finally {
       setActionLoading(null);
     }
@@ -696,17 +846,17 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
   return (
     <div className="relative">
       <Button
-        variant={listedeVar ? 'secondary' : 'ghost'}
+        variant={listedeVar ? "secondary" : "ghost"}
         onClick={() => {
           if (!user) {
-            requireAuth('listeye eklemek');
+            requireAuth("listeye eklemek");
             return;
           }
           setOpen(!open);
         }}
       >
         <List size={16} className="mr-2" />
-        {listedeVar ? `${icerikListeleri.length} listede` : 'Listeye Ekle'}
+        {listedeVar ? `${icerikListeleri.length} listede` : "Listeye Ekle"}
         <ChevronDown size={16} className="ml-2" />
       </Button>
 
@@ -720,8 +870,12 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
               </div>
             ) : listeler.length === 0 ? (
               <div className="text-center py-4">
-                <p className="text-sm text-[#8E8E93] mb-2">Henüz listeniz yok</p>
-                <p className="text-xs text-[#8E8E93]">Profil sayfasından liste oluşturabilirsiniz</p>
+                <p className="text-sm text-[#8E8E93] mb-2">
+                  Henüz listeniz yok
+                </p>
+                <p className="text-xs text-[#8E8E93]">
+                  Profil sayfasından liste oluşturabilirsiniz
+                </p>
               </div>
             ) : (
               listeler.map((liste) => {
@@ -734,13 +888,16 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
                     disabled={isLoading}
                     className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
                       isInList
-                        ? 'bg-[#00b894]/20 text-[#00b894]'
-                        : 'text-white hover:bg-white/10'
+                        ? "bg-[#00b894]/20 text-[#00b894]"
+                        : "text-white hover:bg-white/10"
                     }`}
                   >
                     <span className="truncate">{liste.ad}</span>
                     {isLoading ? (
-                      <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                      <Loader2
+                        size={14}
+                        className="animate-spin flex-shrink-0"
+                      />
                     ) : isInList ? (
                       <Check size={14} className="flex-shrink-0" />
                     ) : (
@@ -763,8 +920,13 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
 
 export default function DetailPage() {
   const { id } = useParams<{ tip: string; id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, requireAuth } = useAuth();
+  const yorumRef = useRef<HTMLDivElement>(null);
+
+  // URL'den yorumId al
+  const targetYorumId = searchParams.get("yorumId");
 
   // States
   const [icerik, setIcerik] = useState<Icerik | null>(null);
@@ -804,8 +966,10 @@ export default function DetailPage() {
           setKutuphaneDurumu(icerikData.kullanicininDurumu);
         }
       } catch (err: any) {
-        console.error('İçerik yükleme hatası:', err);
-        setError(err.response?.data?.message || 'İçerik yüklenirken bir hata oluştu.');
+        console.error("İçerik yükleme hatası:", err);
+        setError(
+          err.response?.data?.message || "İçerik yüklenirken bir hata oluştu."
+        );
       } finally {
         setLoading(false);
       }
@@ -814,9 +978,53 @@ export default function DetailPage() {
     loadContent();
   }, [id]);
 
+  // Hedef yoruma scroll et
+  useEffect(() => {
+    console.log(
+      "Scroll effect - loading:",
+      loading,
+      "targetYorumId:",
+      targetYorumId,
+      "yorumlar:",
+      yorumlar.length
+    );
+    console.log(
+      "Yorum IDs:",
+      yorumlar.map((y) => y.id)
+    );
+    if (!loading && targetYorumId && yorumlar.length > 0) {
+      // Kısa bir gecikme ile scroll et (DOM'un hazır olması için)
+      setTimeout(() => {
+        const yorumElement = document.getElementById(`yorum-${targetYorumId}`);
+        console.log(
+          "Looking for element:",
+          `yorum-${targetYorumId}`,
+          "Found:",
+          !!yorumElement
+        );
+        if (yorumElement) {
+          yorumElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Vurgulama efekti
+          yorumElement.classList.add(
+            "ring-2",
+            "ring-[#6C5CE7]",
+            "ring-opacity-50"
+          );
+          setTimeout(() => {
+            yorumElement.classList.remove(
+              "ring-2",
+              "ring-[#6C5CE7]",
+              "ring-opacity-50"
+            );
+          }, 3000);
+        }
+      }, 500);
+    }
+  }, [loading, targetYorumId, yorumlar]);
+
   // Puanlama kaydet
   const handleRating = async (puan: number) => {
-    if (!requireAuth('puanlamak')) return;
+    if (!requireAuth("puanlamak")) return;
     if (!icerik) return;
 
     setSavingRating(true);
@@ -824,7 +1032,7 @@ export default function DetailPage() {
       await puanlamaApi.puanla({ icerikId: icerik.id, puan });
       setKullaniciPuani(puan);
     } catch (err) {
-      console.error('Puanlama hatası:', err);
+      console.error("Puanlama hatası:", err);
     } finally {
       setSavingRating(false);
     }
@@ -832,7 +1040,7 @@ export default function DetailPage() {
 
   // Kütüphane durumu güncelle
   const handleLibraryChange = async (durum: string) => {
-    if (!requireAuth('kütüphaneye eklemek')) return;
+    if (!requireAuth("kütüphaneye eklemek")) return;
     if (!icerik) return;
 
     setSavingLibrary(true);
@@ -840,7 +1048,7 @@ export default function DetailPage() {
       await kutuphaneApi.durumGuncelle(icerik.id, durum);
       setKutuphaneDurumu(durum);
     } catch (err) {
-      console.error('Kütüphane hatası:', err);
+      console.error("Kütüphane hatası:", err);
     } finally {
       setSavingLibrary(false);
     }
@@ -848,7 +1056,7 @@ export default function DetailPage() {
 
   // Kütüphaneden kaldır
   const handleLibraryRemove = async () => {
-    if (!requireAuth('kütüphaneden kaldırmak')) return;
+    if (!requireAuth("kütüphaneden kaldırmak")) return;
     if (!icerik) return;
 
     setSavingLibrary(true);
@@ -856,7 +1064,7 @@ export default function DetailPage() {
       await kutuphaneApi.kaldir(icerik.id);
       setKutuphaneDurumu(undefined);
     } catch (err) {
-      console.error('Kütüphane kaldırma hatası:', err);
+      console.error("Kütüphane kaldırma hatası:", err);
     } finally {
       setSavingLibrary(false);
     }
@@ -864,19 +1072,23 @@ export default function DetailPage() {
 
   // Yorum beğeni
   const handleLikeComment = async (yorumId: number) => {
-    if (!requireAuth('beğenmek')) return;
+    if (!requireAuth("beğenmek")) return;
 
     try {
       const result = await yorumApi.toggleBegeni(yorumId);
       setYorumlar((prev) =>
         prev.map((y) =>
           y.id === yorumId
-            ? { ...y, kullaniciBegendiMi: result.begendi, begeniSayisi: result.begeniSayisi }
+            ? {
+                ...y,
+                kullaniciBegendiMi: result.begendi,
+                begeniSayisi: result.begeniSayisi,
+              }
             : y
         )
       );
     } catch (err) {
-      console.error('Beğeni hatası:', err);
+      console.error("Beğeni hatası:", err);
     }
   };
 
@@ -885,12 +1097,10 @@ export default function DetailPage() {
     try {
       await yorumApi.update(yorumId, { icerik: yeniIcerik });
       setYorumlar((prev) =>
-        prev.map((y) =>
-          y.id === yorumId ? { ...y, icerik: yeniIcerik } : y
-        )
+        prev.map((y) => (y.id === yorumId ? { ...y, icerik: yeniIcerik } : y))
       );
     } catch (err) {
-      console.error('Yorum güncelleme hatası:', err);
+      console.error("Yorum güncelleme hatası:", err);
       throw err;
     }
   };
@@ -901,7 +1111,7 @@ export default function DetailPage() {
       await yorumApi.delete(yorumId);
       setYorumlar((prev) => prev.filter((y) => y.id !== yorumId));
     } catch (err) {
-      console.error('Yorum silme hatası:', err);
+      console.error("Yorum silme hatası:", err);
       throw err;
     }
   };
@@ -936,8 +1146,12 @@ export default function DetailPage() {
       <div className="max-w-4xl mx-auto">
         <GlassCard className="text-center py-12">
           <AlertTriangle size={48} className="mx-auto mb-4 text-[#fd79a8]" />
-          <h2 className="text-xl font-semibold text-white mb-2">İçerik Bulunamadı</h2>
-          <p className="text-[#8E8E93] mb-6">{error || 'Aradığınız içerik mevcut değil.'}</p>
+          <h2 className="text-xl font-semibold text-white mb-2">
+            İçerik Bulunamadı
+          </h2>
+          <p className="text-[#8E8E93] mb-6">
+            {error || "Aradığınız içerik mevcut değil."}
+          </p>
           <Button onClick={() => navigate(-1)}>
             <ArrowLeft size={16} className="mr-2" />
             Geri Dön
@@ -947,7 +1161,7 @@ export default function DetailPage() {
     );
   }
 
-  const yil = icerik.yayinTarihi?.split('-')[0];
+  const yil = icerik.yayinTarihi?.split("-")[0];
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -973,7 +1187,7 @@ export default function DetailPage() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                {icerik.tur === 'film' ? (
+                {icerik.tur === "film" ? (
                   <Film size={64} className="text-[#8E8E93]" />
                 ) : (
                   <BookOpen size={64} className="text-[#8E8E93]" />
@@ -987,17 +1201,21 @@ export default function DetailPage() {
         <div className="flex-1">
           {/* Type Badge */}
           <div className="flex items-center gap-2 mb-3">
-            {icerik.tur === 'film' ? (
+            {icerik.tur === "film" ? (
               <Film size={16} className="text-[#6C5CE7]" />
             ) : (
               <BookOpen size={16} className="text-[#00CEC9]" />
             )}
-            <span className="text-sm text-[#8E8E93] capitalize">{icerik.tur}</span>
+            <span className="text-sm text-[#8E8E93] capitalize">
+              {icerik.tur}
+            </span>
             {yil && <span className="text-sm text-[#8E8E93]">• {yil}</span>}
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl font-bold text-white mb-4">{icerik.baslik}</h1>
+          <h1 className="text-3xl font-bold text-white mb-4">
+            {icerik.baslik}
+          </h1>
 
           {/* Ratings */}
           <div className="flex items-center gap-6 mb-6">
@@ -1009,7 +1227,8 @@ export default function DetailPage() {
             )}
             <div>
               <p className="text-xs text-[#8E8E93] mb-1">
-                {icerik.puanlamaSayisi} değerlendirme • {icerik.yorumSayisi} yorum
+                {icerik.puanlamaSayisi} değerlendirme • {icerik.yorumSayisi}{" "}
+                yorum
               </p>
             </div>
           </div>
@@ -1027,7 +1246,7 @@ export default function DetailPage() {
             {icerik.turler && icerik.turler.length > 0 && (
               <div>
                 <span className="text-[#8E8E93]">Tür: </span>
-                <span className="text-white">{icerik.turler.join(', ')}</span>
+                <span className="text-white">{icerik.turler.join(", ")}</span>
               </div>
             )}
             {/* Süre (Film) */}
@@ -1043,7 +1262,10 @@ export default function DetailPage() {
                 <span className="text-[#8E8E93]">Sezon: </span>
                 <span className="text-white">{icerik.sezonSayisi}</span>
                 {icerik.bolumSayisi && icerik.bolumSayisi > 0 && (
-                  <span className="text-white"> • {icerik.bolumSayisi} bölüm</span>
+                  <span className="text-white">
+                    {" "}
+                    • {icerik.bolumSayisi} bölüm
+                  </span>
                 )}
               </div>
             )}
@@ -1051,7 +1273,7 @@ export default function DetailPage() {
             {icerik.yazarlar && icerik.yazarlar.length > 0 && (
               <div>
                 <span className="text-[#8E8E93]">Yazar: </span>
-                <span className="text-white">{icerik.yazarlar.join(', ')}</span>
+                <span className="text-white">{icerik.yazarlar.join(", ")}</span>
               </div>
             )}
             {/* Sayfa Sayısı (Kitap) */}
@@ -1075,9 +1297,13 @@ export default function DetailPage() {
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f39c12]/15">
                 <Star size={14} className="text-[#f39c12] fill-[#f39c12]" />
-                <span className="text-[#f39c12] font-semibold text-sm">{icerik.hariciPuan.toFixed(1)}</span>
+                <span className="text-[#f39c12] font-semibold text-sm">
+                  {icerik.hariciPuan.toFixed(1)}
+                </span>
                 {icerik.hariciOySayisi && icerik.hariciOySayisi > 0 && (
-                  <span className="text-[#f39c12]/70 text-xs">({icerik.hariciOySayisi.toLocaleString('tr-TR')} oy)</span>
+                  <span className="text-[#f39c12]/70 text-xs">
+                    ({icerik.hariciOySayisi.toLocaleString("tr-TR")} oy)
+                  </span>
                 )}
               </div>
               <span className="text-[#8E8E93] text-xs">TMDB</span>
@@ -1085,9 +1311,7 @@ export default function DetailPage() {
           )}
 
           {/* Description */}
-          {icerik.aciklama && (
-            <ExpandableDescription text={icerik.aciklama} />
-          )}
+          {icerik.aciklama && <ExpandableDescription text={icerik.aciklama} />}
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 mb-6">
@@ -1098,9 +1322,7 @@ export default function DetailPage() {
               onRemove={handleLibraryRemove}
               loading={savingLibrary}
             />
-            <ListeDropdown
-              icerikId={icerik.id}
-            />
+            <ListeDropdown icerikId={icerik.id} />
           </div>
 
           {/* User Rating */}
@@ -1109,7 +1331,9 @@ export default function DetailPage() {
               <div>
                 <p className="text-sm text-white font-medium mb-1">Puanınız</p>
                 <p className="text-xs text-[#8E8E93]">
-                  {kullaniciPuani > 0 ? `${kullaniciPuani}/10` : 'Henüz puanlamadınız'}
+                  {kullaniciPuani > 0
+                    ? `${kullaniciPuani}/10`
+                    : "Henüz puanlamadınız"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1119,7 +1343,9 @@ export default function DetailPage() {
                   size="lg"
                   readonly={savingRating}
                 />
-                {savingRating && <Loader2 size={16} className="animate-spin text-[#8E8E93]" />}
+                {savingRating && (
+                  <Loader2 size={16} className="animate-spin text-[#8E8E93]" />
+                )}
               </div>
             </div>
           </GlassPanel>
@@ -1130,11 +1356,21 @@ export default function DetailPage() {
       {icerik.oyuncular && icerik.oyuncular.length > 0 && (
         <section className="mb-8">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             Oyuncu Kadrosu
           </h2>
@@ -1156,9 +1392,13 @@ export default function DetailPage() {
                     </div>
                   )}
                 </div>
-                <p className="text-white text-sm font-medium line-clamp-1">{oyuncu.ad}</p>
+                <p className="text-white text-sm font-medium line-clamp-1">
+                  {oyuncu.ad}
+                </p>
                 {oyuncu.karakter && (
-                  <p className="text-[#8E8E93] text-xs line-clamp-1">{oyuncu.karakter}</p>
+                  <p className="text-[#8E8E93] text-xs line-clamp-1">
+                    {oyuncu.karakter}
+                  </p>
                 )}
               </div>
             ))}
@@ -1195,7 +1435,9 @@ export default function DetailPage() {
         ) : (
           <GlassPanel padding="lg" className="text-center">
             <MessageCircle size={40} className="mx-auto mb-3 text-[#8E8E93]" />
-            <p className="text-[#8E8E93]">Henüz yorum yapılmamış. İlk yorumu siz yapın!</p>
+            <p className="text-[#8E8E93]">
+              Henüz yorum yapılmamış. İlk yorumu siz yapın!
+            </p>
           </GlassPanel>
         )}
       </section>

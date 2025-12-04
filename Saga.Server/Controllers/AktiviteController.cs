@@ -708,6 +708,7 @@ namespace Saga.Server.Controllers
                     AktiviteTuru = aktivite.AktiviteTuru.ToString(),
                     IcerikId = aktivite.IcerikId,
                     IcerikTur = aktivite.Icerik?.Tur.ToString(),
+                    YorumId = aktivite.YorumId,
                     OlusturulmaZamani = aktivite.OlusturulmaZamani,
                     BegeniSayisi = aktivite.BegeniSayisi,
                     YorumSayisi = aktivite.YorumSayisi,

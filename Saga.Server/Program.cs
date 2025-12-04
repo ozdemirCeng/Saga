@@ -29,7 +29,11 @@ builder.Services.AddDbContext<SagaDbContext>(options =>
 // 2. TOKEN SERVİSİ
 builder.Services.AddScoped<TokenService>();
 
-// 2.1. EXTERNAL API SERVİSLERİ
+// 2.1. EMAIL SERVİSİ
+builder.Services.AddScoped<IEmailService, EmailService>();
+Console.WriteLine("[Startup] IEmailService registered");
+
+// 2.2. EXTERNAL API SERVİSLERİ
 builder.Services.AddHttpClient<ITmdbService, TmdbService>();
 builder.Services.AddHttpClient<IGoogleBooksService, GoogleBooksService>();
 

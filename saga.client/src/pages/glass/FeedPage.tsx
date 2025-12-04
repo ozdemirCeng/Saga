@@ -1,33 +1,32 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { aktiviteApi } from '../../services/api';
-import type { Aktivite } from '../../services/api';
-import { ActivityCard } from '../../components/ActivityCard';
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Loader2, Sparkles } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { aktiviteApi } from "../../services/api";
+import type { Aktivite } from "../../services/api";
+import { ActivityCard } from "../../components/ActivityCard";
 
 // ============================================
 // NEBULA GLASS CARD COMPONENT
 // ============================================
-function NebulaCard({ 
-  children, 
-  className = '' 
-}: { 
-  children: React.ReactNode; 
+function NebulaCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <div className={`
+    <div
+      className={`
       p-5 rounded-2xl
       bg-[rgba(20,20,35,0.65)]
       backdrop-blur-xl
       border border-[rgba(255,255,255,0.08)]
       shadow-lg
       ${className}
-    `}>
+    `}
+    >
       {children}
     </div>
   );
@@ -64,16 +63,19 @@ function EmptyState({ isLoggedIn }: { isLoggedIn: boolean }) {
       <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#6C5CE7]/20 to-[#00CEC9]/10 border border-[rgba(108,92,231,0.2)] flex items-center justify-center">
         <Sparkles size={36} className="text-[#6C5CE7]" />
       </div>
-      <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: 'var(--font-heading)' }}>
+      <h3
+        className="text-xl font-semibold text-white mb-2"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
         Henüz aktivite yok
       </h3>
       <p className="text-[rgba(255,255,255,0.5)] mb-6 max-w-xs mx-auto">
         {isLoggedIn
-          ? 'Kullanıcıları takip ederek aktivitelerini burada görün.'
-          : 'Keşfet sayfasından içerikleri inceleyebilirsiniz.'}
+          ? "Kullanıcıları takip ederek aktivitelerini burada görün."
+          : "Keşfet sayfasından içerikleri inceleyebilirsiniz."}
       </p>
-      <button 
-        onClick={() => navigate('/kesfet')}
+      <button
+        onClick={() => navigate("/kesfet")}
         className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9] text-white font-semibold hover:shadow-lg hover:shadow-[#6C5CE7]/30 transition-all"
       >
         Keşfet
@@ -94,19 +96,24 @@ export default function FeedPage() {
   const [error, setError] = useState<string | null>(null);
   const [sayfa, setSayfa] = useState(1);
   const [toplamSayfa, setToplamSayfa] = useState(1);
-  const [filter, setFilter] = useState<'hepsi' | 'takip'>('hepsi');
+  const [filter, setFilter] = useState<"hepsi" | "takip">("hepsi");
 
   // Aktiviteleri yükle
   const fetchAktiviteler = useCallback(
-    async (page: number, append: boolean = false) => {
+    async (
+      page: number,
+      append: boolean = false,
+      currentFilter?: "hepsi" | "takip"
+    ) => {
       try {
         if (page === 1) setLoading(true);
         else setLoadingMore(true);
         setError(null);
 
+        const filterToUse = currentFilter ?? filter;
         let result;
 
-        if (user && filter === 'takip') {
+        if (user && filterToUse === "takip") {
           result = await aktiviteApi.getFeed({ sayfa: page, limit: 15 });
         } else {
           result = await aktiviteApi.getGenelFeed({ sayfa: page, limit: 15 });
@@ -119,32 +126,37 @@ export default function FeedPage() {
         }
         setToplamSayfa(result.toplamSayfa);
       } catch (err: any) {
-        console.error('Feed yükleme hatası:', err);
-        setError(err.response?.data?.message || 'Aktiviteler yüklenirken bir hata oluştu.');
+        console.error("Feed yükleme hatası:", err);
+        setError(
+          err.response?.data?.message ||
+            "Aktiviteler yüklenirken bir hata oluştu."
+        );
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [user, filter]
+    [] // Boş dependency - fonksiyon değişmeyecek
   );
 
+  // İlk yükleme ve filter/user değiştiğinde yeniden yükle
   useEffect(() => {
     setSayfa(1);
-    fetchAktiviteler(1);
-  }, [fetchAktiviteler]);
+    fetchAktiviteler(1, false, filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, user?.id]);
 
   const handleLoadMore = () => {
     if (sayfa < toplamSayfa && !loadingMore) {
       const nextPage = sayfa + 1;
       setSayfa(nextPage);
-      fetchAktiviteler(nextPage, true);
+      fetchAktiviteler(nextPage, true, filter);
     }
   };
 
   const handleRefresh = () => {
     setSayfa(1);
-    fetchAktiviteler(1);
+    fetchAktiviteler(1, false, filter);
   };
 
   return (
@@ -154,21 +166,21 @@ export default function FeedPage() {
         {user && (
           <div className="flex p-1 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] mb-6">
             <button
-              onClick={() => setFilter('hepsi')}
+              onClick={() => setFilter("hepsi")}
               className={`flex-1 py-2.5 px-4 text-center text-sm font-medium rounded-lg transition-all ${
-                filter === 'hepsi'
-                  ? 'bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9] text-white shadow-lg'
-                  : 'text-[rgba(255,255,255,0.5)] hover:text-white'
+                filter === "hepsi"
+                  ? "bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9] text-white shadow-lg"
+                  : "text-[rgba(255,255,255,0.5)] hover:text-white"
               }`}
             >
               Herkes
             </button>
             <button
-              onClick={() => setFilter('takip')}
+              onClick={() => setFilter("takip")}
               className={`flex-1 py-2.5 px-4 text-center text-sm font-medium rounded-lg transition-all ${
-                filter === 'takip'
-                  ? 'bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9] text-white shadow-lg'
-                  : 'text-[rgba(255,255,255,0.5)] hover:text-white'
+                filter === "takip"
+                  ? "bg-gradient-to-r from-[#6C5CE7] to-[#00CEC9] text-white shadow-lg"
+                  : "text-[rgba(255,255,255,0.5)] hover:text-white"
               }`}
             >
               Takip Ettiklerim
@@ -180,7 +192,7 @@ export default function FeedPage() {
         {error && (
           <NebulaCard className="text-center py-8 mb-4">
             <p className="text-[#FF6B6B] mb-4">{error}</p>
-            <button 
+            <button
               onClick={handleRefresh}
               className="px-5 py-2.5 rounded-xl bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.08)] text-white font-medium hover:bg-[rgba(255,255,255,0.12)] transition-all"
             >
@@ -218,8 +230,8 @@ export default function FeedPage() {
             {/* Load More Button */}
             {sayfa < toplamSayfa && (
               <div className="mt-6 text-center">
-                <button 
-                  onClick={handleLoadMore} 
+                <button
+                  onClick={handleLoadMore}
                   disabled={loadingMore}
                   className="px-6 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] text-white font-medium hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-50 transition-all"
                 >
@@ -229,7 +241,7 @@ export default function FeedPage() {
                       Yükleniyor...
                     </span>
                   ) : (
-                    'Daha Fazla Göster'
+                    "Daha Fazla Göster"
                   )}
                 </button>
               </div>
