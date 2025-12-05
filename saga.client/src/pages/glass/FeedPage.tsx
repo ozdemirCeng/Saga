@@ -98,7 +98,7 @@ export default function FeedPage() {
   const [sayfa, setSayfa] = useState(1);
   const [toplamSayfa, setToplamSayfa] = useState(1);
   const [filter, setFilter] = useState<"hepsi" | "takip">("hepsi");
-  
+
   // Kullanıcı arama state'leri
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Kullanici[]>([]);
@@ -142,7 +142,10 @@ export default function FeedPage() {
   // Dışarı tıklanınca arama sonuçlarını kapat
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowSearchResults(false);
       }
     };
@@ -214,19 +217,20 @@ export default function FeedPage() {
   return (
     <div className="p-6 pb-24 lg:pb-6">
       <div className="max-w-[600px] mx-auto">
-        
         {/* Kullanıcı Arama - Search Bar (Sadece Mobil) */}
         <div ref={searchRef} className="relative mb-6 lg:hidden">
           <div className="relative">
-            <Search 
-              size={18} 
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)]" 
+            <Search
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)]"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery.trim().length >= 2 && setShowSearchResults(true)}
+              onFocus={() =>
+                searchQuery.trim().length >= 2 && setShowSearchResults(true)
+              }
               placeholder="Kullanıcı ara..."
               className="w-full pl-11 pr-10 py-3 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] text-white placeholder-[rgba(255,255,255,0.3)] focus:outline-none focus:border-[#6C5CE7]/50 focus:bg-[rgba(255,255,255,0.08)] transition-all"
             />
@@ -243,9 +247,9 @@ export default function FeedPage() {
               </button>
             )}
             {searchLoading && (
-              <Loader2 
-                size={16} 
-                className="absolute right-10 top-1/2 -translate-y-1/2 text-[#6C5CE7] animate-spin" 
+              <Loader2
+                size={16}
+                className="absolute right-10 top-1/2 -translate-y-1/2 text-[#6C5CE7] animate-spin"
               />
             )}
           </div>
@@ -271,9 +275,9 @@ export default function FeedPage() {
                   >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#00CEC9] flex items-center justify-center overflow-hidden flex-shrink-0">
                       {kullanici.avatarUrl ? (
-                        <img 
-                          src={kullanici.avatarUrl} 
-                          alt={kullanici.kullaniciAdi} 
+                        <img
+                          src={kullanici.avatarUrl}
+                          alt={kullanici.kullaniciAdi}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -298,12 +302,20 @@ export default function FeedPage() {
           )}
 
           {/* Sonuç bulunamadı */}
-          {showSearchResults && searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchLoading && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-[rgba(20,20,35,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.1)] rounded-xl shadow-2xl p-4 text-center z-50">
-              <Users size={24} className="mx-auto mb-2 text-[rgba(255,255,255,0.3)]" />
-              <p className="text-sm text-[rgba(255,255,255,0.5)]">Kullanıcı bulunamadı</p>
-            </div>
-          )}
+          {showSearchResults &&
+            searchQuery.trim().length >= 2 &&
+            searchResults.length === 0 &&
+            !searchLoading && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[rgba(20,20,35,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.1)] rounded-xl shadow-2xl p-4 text-center z-50">
+                <Users
+                  size={24}
+                  className="mx-auto mb-2 text-[rgba(255,255,255,0.3)]"
+                />
+                <p className="text-sm text-[rgba(255,255,255,0.5)]">
+                  Kullanıcı bulunamadı
+                </p>
+              </div>
+            )}
         </div>
 
         {/* Filter Tabs - Nebula Style */}

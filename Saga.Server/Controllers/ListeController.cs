@@ -30,6 +30,8 @@ namespace Saga.Server.Controllers
 
             var listeler = await _context.Listeler
                 .Include(l => l.Kullanici)
+                .Include(l => l.Icerikler.OrderBy(i => i.Sira).Take(4))
+                    .ThenInclude(li => li.Icerik)
                 .Where(l => l.KullaniciId == kullaniciId && !l.Silindi)
                 .AsNoTracking()
                 .OrderByDescending(l => l.GuncellemeZamani)
@@ -40,10 +42,16 @@ namespace Saga.Server.Controllers
                 Id = l.Id,
                 KullaniciAdi = l.Kullanici.KullaniciAdi,
                 Ad = l.Ad,
+                Aciklama = l.Aciklama,
                 Tur = l.Tur.ToString(),
                 IcerikSayisi = l.IcerikSayisi,
                 HerkeseAcik = l.HerkeseAcik,
-                OlusturulmaZamani = l.OlusturulmaZamani
+                OlusturulmaZamani = l.OlusturulmaZamani,
+                Posterler = l.Icerikler.Select(li => new ListeOnizlemePoster
+                {
+                    PosterUrl = li.Icerik?.PosterUrl,
+                    Tur = li.Icerik?.Tur.ToString()?.ToLower() ?? "film"
+                }).ToList()
             }).ToList();
 
             return Ok(response);

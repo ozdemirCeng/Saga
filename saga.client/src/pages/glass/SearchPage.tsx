@@ -50,10 +50,13 @@ export default function SearchPage() {
       <div className="sticky top-0 z-10 bg-[rgba(10,10,18,0.8)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.06)]">
         <div className="p-4">
           <h1 className="text-xl font-bold text-white mb-4">Kullanıcı Ara</h1>
-          
+
           {/* Search Input */}
           <div className="relative">
-            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search
+              size={20}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40"
+            />
             <input
               type="text"
               value={query}
@@ -135,9 +138,7 @@ export default function SearchPage() {
           <div className="text-center py-12">
             <Search size={48} className="mx-auto text-white/20 mb-4" />
             <p className="text-white/60">Kullanıcı aramak için yazın</p>
-            <p className="text-sm text-white/40 mt-1">
-              En az 2 karakter girin
-            </p>
+            <p className="text-sm text-white/40 mt-1">En az 2 karakter girin</p>
           </div>
         )}
       </div>

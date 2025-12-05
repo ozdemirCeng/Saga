@@ -57,12 +57,13 @@ function YorumItem({
   const [begeniSayisi, setBegeniSayisi] = useState(yorum.begeniSayisi || 0);
   const [begeniYukleniyor, setBegeniYukleniyor] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  
+
   const MAX_LENGTH = 150;
   const isLong = yorum.icerik && yorum.icerik.length > MAX_LENGTH;
-  const displayText = isLong && !expanded 
-    ? yorum.icerik.substring(0, MAX_LENGTH) + "..." 
-    : yorum.icerik;
+  const displayText =
+    isLong && !expanded
+      ? yorum.icerik.substring(0, MAX_LENGTH) + "..."
+      : yorum.icerik;
 
   const handleBegeni = async () => {
     if (!isLoggedIn || begeniYukleniyor) return;
@@ -382,13 +383,15 @@ export function ActivityCard({
           </div>
         </div>
         {yorumMetni && (
-          <div className={`relative p-4 rounded-xl border-l-2 overflow-hidden transition-all duration-300 ${
-            isSpoiler 
-              ? 'bg-gradient-to-r from-[rgba(255,107,107,0.08)] to-[rgba(255,107,107,0.02)] border-[#ff6b6b]/60' 
-              : 'bg-[rgba(108,92,231,0.1)] border-[#6C5CE7]'
-          }`}>
+          <div
+            className={`relative p-4 rounded-xl border-l-2 overflow-hidden transition-all duration-300 ${
+              isSpoiler
+                ? "bg-gradient-to-r from-[rgba(255,107,107,0.08)] to-[rgba(255,107,107,0.02)] border-[#ff6b6b]/60"
+                : "bg-[rgba(108,92,231,0.1)] border-[#6C5CE7]"
+            }`}
+          >
             {isSpoiler && !spoilerAcik ? (
-              <div 
+              <div
                 className="flex items-center justify-between cursor-pointer group"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -400,8 +403,12 @@ export function ActivityCard({
                     <AlertTriangle size={14} className="text-[#ff6b6b]" />
                   </div>
                   <div>
-                    <span className="text-white/90 text-sm font-medium">Spoiler İçeriyor</span>
-                    <p className="text-white/40 text-xs mt-0.5">İçeriği görmek için tıklayın</p>
+                    <span className="text-white/90 text-sm font-medium">
+                      Spoiler İçeriyor
+                    </span>
+                    <p className="text-white/40 text-xs mt-0.5">
+                      İçeriği görmek için tıklayın
+                    </p>
                   </div>
                 </div>
                 <button className="px-3 py-1.5 rounded-lg bg-[rgba(255,107,107,0.1)] border border-[rgba(255,107,107,0.2)] text-[#ff6b6b] text-xs font-medium hover:bg-[rgba(255,107,107,0.2)] transition-all group-hover:scale-105">
@@ -414,9 +421,11 @@ export function ActivityCard({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle size={12} className="text-[#ff6b6b]/70" />
-                      <span className="text-[#ff6b6b]/70 text-xs font-medium uppercase tracking-wide">Spoiler</span>
+                      <span className="text-[#ff6b6b]/70 text-xs font-medium uppercase tracking-wide">
+                        Spoiler
+                      </span>
                     </div>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSpoilerAcik(false);
@@ -428,7 +437,11 @@ export function ActivityCard({
                   </div>
                 )}
                 <p className="text-[rgba(255,255,255,0.85)] text-sm italic break-words whitespace-pre-wrap leading-relaxed">
-                  "{isLongComment ? yorumMetni.substring(0, 150) + '...' : yorumMetni}"
+                  "
+                  {isLongComment
+                    ? yorumMetni.substring(0, 150) + "..."
+                    : yorumMetni}
+                  "
                 </p>
                 {isLongComment && (
                   <button

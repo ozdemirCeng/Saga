@@ -849,7 +849,7 @@ export default function ExplorePage() {
   const seenBookIds = useRef(new Set<string>());
   // Son istenen startIndex ve queryIndex'i takip et (duplicate request önleme)
   const lastRequestedKey = useRef<string>("");
-  
+
   // Mobil filtre paneli state'i
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filterPanelDragY, setFilterPanelDragY] = useState(0);
@@ -860,37 +860,37 @@ export default function ExplorePage() {
   // Mobil filtre açıkken body scroll'u engelle
   useEffect(() => {
     if (showMobileFilters) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
     } else {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
       setFilterPanelDragY(0);
     }
     return () => {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
     };
   }, [showMobileFilters]);
 
   // Swipe to close handlers - GPU optimized
   const dragDistanceRef = useRef(0);
-  
+
   const handleFilterTouchStart = useCallback((e: React.TouchEvent) => {
     filterPanelTouchStart.current = e.touches[0].clientY;
     dragDistanceRef.current = 0;
     // Transition'ı kapat - smooth drag için
     if (filterPanelRef.current) {
-      filterPanelRef.current.style.transition = 'none';
+      filterPanelRef.current.style.transition = "none";
     }
   }, []);
 
   const handleFilterTouchMove = useCallback((e: React.TouchEvent) => {
     if (filterPanelTouchStart.current === null) return;
-    
+
     const currentY = e.touches[0].clientY;
     const diff = currentY - filterPanelTouchStart.current;
-    
+
     // Sadece aşağı çekmeye izin ver - direkt DOM manipülasyonu (React state bypass)
     if (diff > 0 && filterPanelRef.current) {
       dragDistanceRef.current = diff;
@@ -905,32 +905,32 @@ export default function ExplorePage() {
 
   const handleFilterTouchEnd = useCallback(() => {
     if (!filterPanelRef.current) return;
-    
+
     const dragDistance = dragDistanceRef.current;
-    
+
     // Transition'ı geri aç
-    filterPanelRef.current.style.transition = 'transform 0.25s ease-out';
+    filterPanelRef.current.style.transition = "transform 0.25s ease-out";
     if (backdropRef.current) {
-      backdropRef.current.style.transition = 'opacity 0.25s ease-out';
+      backdropRef.current.style.transition = "opacity 0.25s ease-out";
     }
-    
+
     // 80px'den fazla çekildiyse kapat
     if (dragDistance > 80) {
-      filterPanelRef.current.style.transform = 'translate3d(0, 100%, 0)';
+      filterPanelRef.current.style.transform = "translate3d(0, 100%, 0)";
       if (backdropRef.current) {
-        backdropRef.current.style.opacity = '0';
+        backdropRef.current.style.opacity = "0";
       }
       setTimeout(() => {
         setShowMobileFilters(false);
       }, 250);
     } else {
       // Geri yerine oturt
-      filterPanelRef.current.style.transform = 'translate3d(0, 0, 0)';
+      filterPanelRef.current.style.transform = "translate3d(0, 0, 0)";
       if (backdropRef.current) {
-        backdropRef.current.style.opacity = '1';
+        backdropRef.current.style.opacity = "1";
       }
     }
-    
+
     filterPanelTouchStart.current = null;
     dragDistanceRef.current = 0;
   }, []);
@@ -2364,7 +2364,14 @@ export default function ExplorePage() {
             <span>Filtreler</span>
             {(minYear || maxYear || minPuan || selectedGenres.length > 0) && (
               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[#6C5CE7] text-white">
-                {[minYear, maxYear, minPuan, selectedGenres.length > 0 ? 1 : null].filter(Boolean).length}
+                {
+                  [
+                    minYear,
+                    maxYear,
+                    minPuan,
+                    selectedGenres.length > 0 ? 1 : null,
+                  ].filter(Boolean).length
+                }
               </span>
             )}
           </button>
@@ -2375,8 +2382,18 @@ export default function ExplorePage() {
           {/* Tab Buttons - Segment Control Style */}
           <div className="flex-1 flex p-1 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
             {[
-              { id: "tmdb", label: "Film & Dizi", shortLabel: "Film", icon: <Film size={15} /> },
-              { id: "kitaplar", label: "Kitaplar", shortLabel: "Kitap", icon: <BookOpen size={15} /> },
+              {
+                id: "tmdb",
+                label: "Film & Dizi",
+                shortLabel: "Film",
+                icon: <Film size={15} />,
+              },
+              {
+                id: "kitaplar",
+                label: "Kitaplar",
+                shortLabel: "Kitap",
+                icon: <BookOpen size={15} />,
+              },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -2511,26 +2528,26 @@ export default function ExplorePage() {
 
       {/* Mobile Filter Overlay */}
       {showMobileFilters && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] lg:hidden"
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: "none" }}
         >
           {/* Backdrop */}
-          <div 
+          <div
             ref={backdropRef}
             className="absolute inset-0 bg-black/70 backdrop-blur-sm will-change-[opacity]"
-            style={{ transition: 'opacity 0.15s ease-out' }}
+            style={{ transition: "opacity 0.15s ease-out" }}
             onClick={() => setShowMobileFilters(false)}
           />
-          
+
           {/* Filter Panel */}
-          <div 
+          <div
             ref={filterPanelRef}
             className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-[rgba(15,15,25,0.98)] backdrop-blur-xl rounded-t-3xl border-t border-[rgba(255,255,255,0.1)] overflow-hidden flex flex-col will-change-transform animate-slide-up"
-            style={{ transform: 'translate3d(0, 0, 0)' }}
+            style={{ transform: "translate3d(0, 0, 0)" }}
           >
             {/* Handle - Draggable Area */}
-            <div 
+            <div
               className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
               onTouchStart={handleFilterTouchStart}
               onTouchMove={handleFilterTouchMove}
@@ -2538,9 +2555,9 @@ export default function ExplorePage() {
             >
               <div className="w-10 h-1 rounded-full bg-[rgba(255,255,255,0.3)]" />
             </div>
-            
+
             {/* Header - Also draggable */}
-            <div 
+            <div
               className="flex items-center justify-between px-5 pb-4 border-b border-[rgba(255,255,255,0.08)] flex-shrink-0 touch-none"
               onTouchStart={handleFilterTouchStart}
               onTouchMove={handleFilterTouchMove}
@@ -2554,7 +2571,7 @@ export default function ExplorePage() {
                 <X size={20} className="text-white/60" />
               </button>
             </div>
-            
+
             {/* Filter Content - Scrollable */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-5">
               {/* TMDB Tab Filters */}
@@ -2562,16 +2579,28 @@ export default function ExplorePage() {
                 <>
                   {/* Tür Seçimi */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">İçerik Türü</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      İçerik Türü
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
                       {[
-                        { value: "all", label: "Tümü", icon: <Globe size={14} /> },
-                        { value: "movie", label: "Film", icon: <Film size={14} /> },
+                        {
+                          value: "all",
+                          label: "Tümü",
+                          icon: <Globe size={14} />,
+                        },
+                        {
+                          value: "movie",
+                          label: "Film",
+                          icon: <Film size={14} />,
+                        },
                         { value: "tv", label: "Dizi", icon: <Tv size={14} /> },
                       ].map((opt) => (
                         <button
                           key={opt.value}
-                          onClick={() => handleTmdbFilterChange(opt.value as any)}
+                          onClick={() =>
+                            handleTmdbFilterChange(opt.value as any)
+                          }
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
                             tmdbFilter === opt.value
                               ? "bg-[#6C5CE7] text-white"
@@ -2587,13 +2616,31 @@ export default function ExplorePage() {
 
                   {/* Sıralama */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Sıralama</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Sıralama
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
                       {[
-                        { value: "popular", label: "Popüler", icon: <TrendingUp size={14} /> },
-                        { value: "top_rated", label: "En İyi", icon: <Star size={14} /> },
-                        { value: "trending", label: "Trend", icon: <Clock size={14} /> },
-                        { value: "now_playing", label: "Güncel", icon: <Calendar size={14} /> },
+                        {
+                          value: "popular",
+                          label: "Popüler",
+                          icon: <TrendingUp size={14} />,
+                        },
+                        {
+                          value: "top_rated",
+                          label: "En İyi",
+                          icon: <Star size={14} />,
+                        },
+                        {
+                          value: "trending",
+                          label: "Trend",
+                          icon: <Clock size={14} />,
+                        },
+                        {
+                          value: "now_playing",
+                          label: "Güncel",
+                          icon: <Calendar size={14} />,
+                        },
                       ].map((opt) => (
                         <button
                           key={opt.value}
@@ -2613,13 +2660,19 @@ export default function ExplorePage() {
 
                   {/* Yıl Filtresi */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Yıl Aralığı</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Yıl Aralığı
+                    </h4>
                     <div className="flex gap-3">
                       <input
                         type="number"
                         placeholder="Min"
                         value={minYear || ""}
-                        onChange={(e) => setMinYear(e.target.value ? parseInt(e.target.value) : null)}
+                        onChange={(e) =>
+                          setMinYear(
+                            e.target.value ? parseInt(e.target.value) : null
+                          )
+                        }
                         className="flex-1 px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-white text-sm placeholder-white/40 focus:outline-none focus:border-[#6C5CE7]/50"
                       />
                       <span className="text-white/40 self-center">-</span>
@@ -2627,7 +2680,11 @@ export default function ExplorePage() {
                         type="number"
                         placeholder="Max"
                         value={maxYear || ""}
-                        onChange={(e) => setMaxYear(e.target.value ? parseInt(e.target.value) : null)}
+                        onChange={(e) =>
+                          setMaxYear(
+                            e.target.value ? parseInt(e.target.value) : null
+                          )
+                        }
                         className="flex-1 px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-white text-sm placeholder-white/40 focus:outline-none focus:border-[#6C5CE7]/50"
                       />
                     </div>
@@ -2635,7 +2692,9 @@ export default function ExplorePage() {
 
                   {/* Minimum Puan */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Minimum Puan</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Minimum Puan
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
                       {[null, 5, 6, 7, 8, 9].map((puan) => (
                         <button
@@ -2655,14 +2714,23 @@ export default function ExplorePage() {
 
                   {/* Türler */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Türler</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Türler
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
-                      {(tmdbFilter === "all" ? COMBINED_GENRES : tmdbFilter === "tv" ? TV_GENRES : FILM_GENRES).map((genre) => (
+                      {(tmdbFilter === "all"
+                        ? COMBINED_GENRES
+                        : tmdbFilter === "tv"
+                        ? TV_GENRES
+                        : FILM_GENRES
+                      ).map((genre) => (
                         <button
                           key={genre.id}
                           onClick={() => {
                             if (selectedGenres.includes(genre.id)) {
-                              setSelectedGenres(selectedGenres.filter(id => id !== genre.id));
+                              setSelectedGenres(
+                                selectedGenres.filter((id) => id !== genre.id)
+                              );
                             } else {
                               setSelectedGenres([...selectedGenres, genre.id]);
                             }
@@ -2686,7 +2754,9 @@ export default function ExplorePage() {
                 <>
                   {/* Dil Seçimi */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Dil</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Dil
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
                       {bookLanguages.map((lang) => (
                         <button
@@ -2706,7 +2776,9 @@ export default function ExplorePage() {
 
                   {/* Kategori */}
                   <div>
-                    <h4 className="text-sm font-semibold text-white/80 mb-3">Kategori</h4>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">
+                      Kategori
+                    </h4>
                     <div className="flex gap-2 flex-wrap">
                       {bookCategories.map((cat) => (
                         <button

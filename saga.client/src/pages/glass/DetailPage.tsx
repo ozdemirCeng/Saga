@@ -1376,7 +1376,10 @@ export default function DetailPage() {
           </h2>
           <div className="flex overflow-x-auto gap-3 lg:gap-4 pb-4 hide-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
             {icerik.oyuncular.slice(0, 12).map((oyuncu, index) => (
-              <div key={index} className="flex-shrink-0 w-20 lg:w-28 text-center">
+              <div
+                key={index}
+                className="flex-shrink-0 w-20 lg:w-28 text-center"
+              >
                 <div className="w-20 h-20 lg:w-28 lg:h-28 rounded-full overflow-hidden bg-white/5 mb-2 mx-auto border-2 border-white/10">
                   {oyuncu.profilUrl ? (
                     <img

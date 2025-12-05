@@ -66,10 +66,20 @@ namespace Saga.Server.DTOs
         public long Id { get; set; }
         public string KullaniciAdi { get; set; } = null!;
         public string Ad { get; set; } = null!;
+        public string? Aciklama { get; set; }
         public string Tur { get; set; } = null!;
         public int IcerikSayisi { get; set; }
         public bool HerkeseAcik { get; set; }
         public DateTime OlusturulmaZamani { get; set; }
+        // İlk 4 içeriğin posteri için
+        public List<ListeOnizlemePoster> Posterler { get; set; } = new();
+    }
+
+    // Poster önizlemesi için minimal DTO
+    public class ListeOnizlemePoster
+    {
+        public string? PosterUrl { get; set; }
+        public string Tur { get; set; } = "film";
     }
 
     // Listeye içerik ekleme
