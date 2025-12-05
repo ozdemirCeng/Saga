@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, User, Search, Settings, LogOut, MoreHorizontal, X } from 'lucide-react';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { Home, Compass, User, BookOpen, Settings, LogOut, MoreHorizontal, X, Sparkles } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { RightWidgets } from './RightWidgets';
 import { useAuth } from '../../context/AuthContext';
@@ -31,6 +31,32 @@ export function GlassLayout() {
       {/* 3-Column Nebula Layout - Responsive */}
       <div className="min-h-screen">
         
+        {/* MOBILE HEADER - Logo */}
+        <header className="
+          lg:hidden
+          fixed top-0 left-0 right-0 z-40
+          bg-[rgba(10,10,18,0.85)]
+          backdrop-blur-xl
+          border-b border-[rgba(255,255,255,0.06)]
+          safe-area-top
+        ">
+          <div className="flex items-center justify-center h-14 px-4">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="
+                w-8 h-8 rounded-lg
+                bg-gradient-to-br from-[#6C5CE7] to-[#00CEC9]
+                flex items-center justify-center
+                shadow-lg shadow-[#6C5CE7]/25
+              ">
+                <Sparkles size={16} className="text-white" />
+              </div>
+              <span className="text-lg font-bold tracking-tight text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+                Saga
+              </span>
+            </Link>
+          </div>
+        </header>
+
         {/* LEFT SIDEBAR - Fixed on left, hidden on mobile */}
         <aside className="
           hidden lg:block
@@ -53,7 +79,7 @@ export function GlassLayout() {
           ${!isFullWidthPage ? 'xl:mr-[360px]' : ''}
           overflow-y-auto
           pb-20 lg:pb-0
-          pt-6 lg:pt-8
+          pt-16 lg:pt-8
         `}>
           <Outlet />
         </main>
@@ -100,7 +126,7 @@ function MobileNav() {
   const navItems = [
     { path: '/', icon: Home, label: 'Akış' },
     { path: '/kesfet', icon: Compass, label: 'Keşfet' },
-    { path: '/ara', icon: Search, label: 'Ara' },
+    { path: '/kutuphane', icon: BookOpen, label: 'Kütüphane' },
     { path: '/profil', icon: User, label: 'Profil' },
   ];
 
@@ -133,11 +159,11 @@ function MobileNav() {
       {/* Overlay Menu */}
       {showMenu && (
         <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 bottom-16 z-40 bg-black/60 backdrop-blur-sm"
           onClick={() => setShowMenu(false)}
         >
           <div 
-            className="absolute bottom-20 left-4 right-4 bg-[rgba(20,20,35,0.95)] backdrop-blur-xl rounded-2xl border border-[rgba(255,255,255,0.1)] overflow-hidden"
+            className="absolute bottom-4 left-4 right-4 bg-[rgba(20,20,35,0.95)] backdrop-blur-xl rounded-2xl border border-[rgba(255,255,255,0.1)] overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Menu Header */}
@@ -199,24 +225,31 @@ function MobileNav() {
 
       {/* Bottom Navigation */}
       <div className="flex justify-around items-center h-16 px-2">
-        {navItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => handleNavClick(item.path)}
-            className={`
-              flex flex-col items-center justify-center gap-0.5 
-              flex-1 h-full
-              transition-all duration-200
-              ${isActive(item.path) 
-                ? 'text-[#6C5CE7]' 
-                : 'text-[rgba(255,255,255,0.5)] active:text-white'
-              }
-            `}
-          >
-            <item.icon size={22} strokeWidth={isActive(item.path) ? 2.5 : 2} />
-            <span className="text-[10px] font-medium">{item.label}</span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          // Profil için özel yönlendirme
+          const targetPath = item.path === '/profil' 
+            ? (isAuthenticated && user ? `/profil/${user.kullaniciAdi}` : '/giris')
+            : item.path;
+          
+          return (
+            <Link
+              key={item.path}
+              to={targetPath}
+              className={`
+                flex flex-col items-center justify-center gap-0.5 
+                flex-1 h-full
+                transition-all duration-200
+                ${isActive(item.path) 
+                  ? 'text-[#6C5CE7]' 
+                  : 'text-[rgba(255,255,255,0.5)] active:text-white'
+                }
+              `}
+            >
+              <item.icon size={22} strokeWidth={isActive(item.path) ? 2.5 : 2} />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
         
         {/* More Button */}
         <button

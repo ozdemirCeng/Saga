@@ -1123,15 +1123,15 @@ export default function DetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+      <div className="max-w-4xl mx-auto px-4 lg:px-0">
+        <div className="flex items-center gap-4 mb-6 lg:mb-8">
           <div className="w-8 h-8 skeleton rounded-full" />
           <div className="h-6 w-32 skeleton rounded" />
         </div>
-        <div className="flex gap-8">
-          <div className="w-[280px] aspect-[2/3] skeleton rounded-2xl" />
+        <div className="flex flex-col md:flex-row gap-4 lg:gap-8">
+          <div className="w-[140px] mx-auto md:mx-0 md:w-[280px] aspect-[2/3] skeleton rounded-xl lg:rounded-2xl" />
           <div className="flex-1">
-            <div className="h-8 w-3/4 skeleton rounded mb-4" />
+            <div className="h-6 lg:h-8 w-3/4 skeleton rounded mb-4 mx-auto md:mx-0" />
             <div className="h-4 w-full skeleton rounded mb-2" />
             <div className="h-4 w-full skeleton rounded mb-2" />
             <div className="h-4 w-2/3 skeleton rounded" />
@@ -1143,7 +1143,7 @@ export default function DetailPage() {
 
   if (error || !icerik) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4 lg:px-0">
         <GlassCard className="text-center py-12">
           <AlertTriangle size={48} className="mx-auto mb-4 text-[#fd79a8]" />
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -1164,21 +1164,21 @@ export default function DetailPage() {
   const yil = icerik.yayinTarihi?.split("-")[0];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 lg:px-0">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-[#8E8E93] hover:text-white transition-colors mb-6"
+        className="flex items-center gap-2 text-[#8E8E93] hover:text-white transition-colors mb-4 lg:mb-6"
       >
         <ArrowLeft size={20} />
         <span>Geri</span>
       </button>
 
       {/* Hero Section */}
-      <div className="flex flex-col md:flex-row gap-8 mb-8">
+      <div className="flex flex-col md:flex-row gap-4 lg:gap-8 mb-6 lg:mb-8">
         {/* Poster */}
-        <div className="w-full md:w-[280px] flex-shrink-0">
-          <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-white/5 shadow-poster">
+        <div className="w-[140px] mx-auto md:mx-0 md:w-[280px] flex-shrink-0">
+          <div className="aspect-[2/3] rounded-xl lg:rounded-2xl overflow-hidden bg-white/5 shadow-poster">
             {icerik.posterUrl ? (
               <img
                 src={icerik.posterUrl}
@@ -1198,9 +1198,9 @@ export default function DetailPage() {
         </div>
 
         {/* Info */}
-        <div className="flex-1">
+        <div className="flex-1 text-center md:text-left">
           {/* Type Badge */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center justify-center md:justify-start gap-2 mb-2 lg:mb-3">
             {icerik.tur === "film" ? (
               <Film size={16} className="text-[#6C5CE7]" />
             ) : (
@@ -1213,12 +1213,12 @@ export default function DetailPage() {
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl font-bold text-white mb-4">
+          <h1 className="text-xl lg:text-3xl font-bold text-white mb-3 lg:mb-4 text-center md:text-left">
             {icerik.baslik}
           </h1>
 
           {/* Ratings */}
-          <div className="flex items-center gap-6 mb-6">
+          <div className="flex items-center justify-center md:justify-start gap-4 lg:gap-6 mb-4 lg:mb-6">
             {icerik.ortalamaPuan > 0 && (
               <div>
                 <p className="text-xs text-[#8E8E93] mb-1">Platform Puanı</p>
@@ -1234,7 +1234,7 @@ export default function DetailPage() {
           </div>
 
           {/* Meta Info (Türler, Süre, Yazarlar vs.) */}
-          <div className="flex flex-wrap gap-4 mb-4 text-sm">
+          <div className="flex flex-wrap justify-center md:justify-start gap-3 lg:gap-4 mb-4 text-sm">
             {/* Yönetmen */}
             {icerik.yonetmen && (
               <div>
@@ -1294,7 +1294,7 @@ export default function DetailPage() {
 
           {/* Harici Puan (TMDB/IMDB) */}
           {icerik.hariciPuan && icerik.hariciPuan > 0 && (
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#f39c12]/15">
                 <Star size={14} className="text-[#f39c12] fill-[#f39c12]" />
                 <span className="text-[#f39c12] font-semibold text-sm">
@@ -1314,7 +1314,7 @@ export default function DetailPage() {
           {icerik.aciklama && <ExpandableDescription text={icerik.aciklama} />}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 mb-6">
+          <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4 lg:mb-6">
             <LibraryDropdown
               icerikTur={icerik.tur}
               currentStatus={kutuphaneDurumu}
@@ -1354,8 +1354,8 @@ export default function DetailPage() {
 
       {/* Cast Section - Oyuncu Kadrosu */}
       {icerik.oyuncular && icerik.oyuncular.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <section className="mb-6 lg:mb-8">
+          <h2 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4 flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="20"
@@ -1374,10 +1374,10 @@ export default function DetailPage() {
             </svg>
             Oyuncu Kadrosu
           </h2>
-          <div className="flex overflow-x-auto gap-4 pb-4 hide-scrollbar">
+          <div className="flex overflow-x-auto gap-3 lg:gap-4 pb-4 hide-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
             {icerik.oyuncular.slice(0, 12).map((oyuncu, index) => (
-              <div key={index} className="flex-shrink-0 w-28 text-center">
-                <div className="w-28 h-28 rounded-full overflow-hidden bg-white/5 mb-2 mx-auto border-2 border-white/10">
+              <div key={index} className="flex-shrink-0 w-20 lg:w-28 text-center">
+                <div className="w-20 h-20 lg:w-28 lg:h-28 rounded-full overflow-hidden bg-white/5 mb-2 mx-auto border-2 border-white/10">
                   {oyuncu.profilUrl ? (
                     <img
                       src={oyuncu.profilUrl}
@@ -1408,13 +1408,13 @@ export default function DetailPage() {
 
       {/* Comments Section */}
       <section>
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+        <h2 className="text-lg lg:text-xl font-bold text-white mb-4 lg:mb-6 flex items-center gap-2">
           <MessageCircle size={20} />
           Yorumlar ({yorumlar.length})
         </h2>
 
         {/* Comment Form */}
-        <div className="mb-6">
+        <div className="mb-4 lg:mb-6">
           <CommentForm icerikId={icerik.id} onSubmit={handleNewComment} />
         </div>
 

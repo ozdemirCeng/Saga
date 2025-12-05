@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   Globe,
+  SlidersHorizontal,
+  Compass,
 } from "lucide-react";
 import { externalApi, icerikApi } from "../../services/api";
 import type { TmdbFilm, GoogleBook } from "../../services/api";
@@ -847,6 +849,91 @@ export default function ExplorePage() {
   const seenBookIds = useRef(new Set<string>());
   // Son istenen startIndex ve queryIndex'i takip et (duplicate request önleme)
   const lastRequestedKey = useRef<string>("");
+  
+  // Mobil filtre paneli state'i
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [filterPanelDragY, setFilterPanelDragY] = useState(0);
+  const filterPanelTouchStart = useRef<number | null>(null);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Mobil filtre açıkken body scroll'u engelle
+  useEffect(() => {
+    if (showMobileFilters) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      setFilterPanelDragY(0);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [showMobileFilters]);
+
+  // Swipe to close handlers - GPU optimized
+  const dragDistanceRef = useRef(0);
+  
+  const handleFilterTouchStart = useCallback((e: React.TouchEvent) => {
+    filterPanelTouchStart.current = e.touches[0].clientY;
+    dragDistanceRef.current = 0;
+    // Transition'ı kapat - smooth drag için
+    if (filterPanelRef.current) {
+      filterPanelRef.current.style.transition = 'none';
+    }
+  }, []);
+
+  const handleFilterTouchMove = useCallback((e: React.TouchEvent) => {
+    if (filterPanelTouchStart.current === null) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - filterPanelTouchStart.current;
+    
+    // Sadece aşağı çekmeye izin ver - direkt DOM manipülasyonu (React state bypass)
+    if (diff > 0 && filterPanelRef.current) {
+      dragDistanceRef.current = diff;
+      // GPU accelerated transform
+      filterPanelRef.current.style.transform = `translate3d(0, ${diff}px, 0)`;
+      // Backdrop opacity
+      if (backdropRef.current) {
+        backdropRef.current.style.opacity = String(Math.max(0, 1 - diff / 250));
+      }
+    }
+  }, []);
+
+  const handleFilterTouchEnd = useCallback(() => {
+    if (!filterPanelRef.current) return;
+    
+    const dragDistance = dragDistanceRef.current;
+    
+    // Transition'ı geri aç
+    filterPanelRef.current.style.transition = 'transform 0.25s ease-out';
+    if (backdropRef.current) {
+      backdropRef.current.style.transition = 'opacity 0.25s ease-out';
+    }
+    
+    // 80px'den fazla çekildiyse kapat
+    if (dragDistance > 80) {
+      filterPanelRef.current.style.transform = 'translate3d(0, 100%, 0)';
+      if (backdropRef.current) {
+        backdropRef.current.style.opacity = '0';
+      }
+      setTimeout(() => {
+        setShowMobileFilters(false);
+      }, 250);
+    } else {
+      // Geri yerine oturt
+      filterPanelRef.current.style.transform = 'translate3d(0, 0, 0)';
+      if (backdropRef.current) {
+        backdropRef.current.style.opacity = '1';
+      }
+    }
+    
+    filterPanelTouchStart.current = null;
+    dragDistanceRef.current = 0;
+  }, []);
 
   // ============================================
   // GOOGLE BOOKS API STRATEJİSİ - JSON CONFIG
@@ -2224,12 +2311,19 @@ export default function ExplorePage() {
     <div className="flex gap-6 px-6 lg:px-8">
       {/* Main Content Area */}
       <div className="flex-1 min-w-0">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Keşfet</h1>
-          <p className="text-[#8E8E93]">
-            Film ve kitapları keşfedin, kütüphanenize ekleyin.
-          </p>
+        {/* Header - Modern */}
+        <div className="mb-6 hidden lg:block">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6C5CE7] to-[#00CEC9] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/20">
+              <Compass size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Keşfet</h1>
+              <p className="text-xs text-[rgba(255,255,255,0.5)]">
+                Film ve kitapları keşfedin
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -2260,25 +2354,45 @@ export default function ExplorePage() {
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar">
-          {[
-            { id: "tmdb", label: "Film & Dizi", icon: <Film size={16} /> },
-            { id: "kitaplar", label: "Kitaplar", icon: <BookOpen size={16} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "bg-[#6C5CE7] text-white"
-                  : "bg-white/5 text-[#8E8E93] hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        {/* Mobil Filtre Butonu */}
+        <div className="lg:hidden mb-4">
+          <button
+            onClick={() => setShowMobileFilters(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-white text-sm font-medium hover:bg-[rgba(255,255,255,0.12)] transition-all"
+          >
+            <SlidersHorizontal size={16} />
+            <span>Filtreler</span>
+            {(minYear || maxYear || minPuan || selectedGenres.length > 0) && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[#6C5CE7] text-white">
+                {[minYear, maxYear, minPuan, selectedGenres.length > 0 ? 1 : null].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Tabs - Mobilde şık tasarım */}
+        <div className="flex items-center gap-3 mb-6">
+          {/* Tab Buttons - Segment Control Style */}
+          <div className="flex-1 flex p-1 rounded-xl bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)]">
+            {[
+              { id: "tmdb", label: "Film & Dizi", shortLabel: "Film", icon: <Film size={15} /> },
+              { id: "kitaplar", label: "Kitaplar", shortLabel: "Kitap", icon: <BookOpen size={15} /> },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? "bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white shadow-lg"
+                    : "text-[rgba(255,255,255,0.5)] hover:text-white"
+                }`}
+              >
+                {tab.icon}
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Loading */}
@@ -2366,7 +2480,7 @@ export default function ExplorePage() {
         )}
       </div>
 
-      {/* Right Sidebar - Filter Panel */}
+      {/* Right Sidebar - Filter Panel (Desktop) */}
       <div className="hidden lg:block w-[300px] flex-shrink-0">
         <div className="sticky top-6">
           <FilterPanel
@@ -2394,6 +2508,249 @@ export default function ExplorePage() {
           />
         </div>
       </div>
+
+      {/* Mobile Filter Overlay */}
+      {showMobileFilters && (
+        <div 
+          className="fixed inset-0 z-[100] lg:hidden"
+          style={{ touchAction: 'none' }}
+        >
+          {/* Backdrop */}
+          <div 
+            ref={backdropRef}
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm will-change-[opacity]"
+            style={{ transition: 'opacity 0.15s ease-out' }}
+            onClick={() => setShowMobileFilters(false)}
+          />
+          
+          {/* Filter Panel */}
+          <div 
+            ref={filterPanelRef}
+            className="absolute bottom-0 left-0 right-0 max-h-[80vh] bg-[rgba(15,15,25,0.98)] backdrop-blur-xl rounded-t-3xl border-t border-[rgba(255,255,255,0.1)] overflow-hidden flex flex-col will-change-transform animate-slide-up"
+            style={{ transform: 'translate3d(0, 0, 0)' }}
+          >
+            {/* Handle - Draggable Area */}
+            <div 
+              className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+              onTouchStart={handleFilterTouchStart}
+              onTouchMove={handleFilterTouchMove}
+              onTouchEnd={handleFilterTouchEnd}
+            >
+              <div className="w-10 h-1 rounded-full bg-[rgba(255,255,255,0.3)]" />
+            </div>
+            
+            {/* Header - Also draggable */}
+            <div 
+              className="flex items-center justify-between px-5 pb-4 border-b border-[rgba(255,255,255,0.08)] flex-shrink-0 touch-none"
+              onTouchStart={handleFilterTouchStart}
+              onTouchMove={handleFilterTouchMove}
+              onTouchEnd={handleFilterTouchEnd}
+            >
+              <h3 className="text-lg font-bold text-white">Filtreler</h3>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="p-2 rounded-full hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+              >
+                <X size={20} className="text-white/60" />
+              </button>
+            </div>
+            
+            {/* Filter Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-5">
+              {/* TMDB Tab Filters */}
+              {activeTab === "tmdb" && (
+                <>
+                  {/* Tür Seçimi */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">İçerik Türü</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { value: "all", label: "Tümü", icon: <Globe size={14} /> },
+                        { value: "movie", label: "Film", icon: <Film size={14} /> },
+                        { value: "tv", label: "Dizi", icon: <Tv size={14} /> },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleTmdbFilterChange(opt.value as any)}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                            tmdbFilter === opt.value
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {opt.icon}
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sıralama */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Sıralama</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { value: "popular", label: "Popüler", icon: <TrendingUp size={14} /> },
+                        { value: "top_rated", label: "En İyi", icon: <Star size={14} /> },
+                        { value: "trending", label: "Trend", icon: <Clock size={14} /> },
+                        { value: "now_playing", label: "Güncel", icon: <Calendar size={14} /> },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleTmdbSortChange(opt.value as any)}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                            tmdbSort === opt.value
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {opt.icon}
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Yıl Filtresi */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Yıl Aralığı</h4>
+                    <div className="flex gap-3">
+                      <input
+                        type="number"
+                        placeholder="Min"
+                        value={minYear || ""}
+                        onChange={(e) => setMinYear(e.target.value ? parseInt(e.target.value) : null)}
+                        className="flex-1 px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-white text-sm placeholder-white/40 focus:outline-none focus:border-[#6C5CE7]/50"
+                      />
+                      <span className="text-white/40 self-center">-</span>
+                      <input
+                        type="number"
+                        placeholder="Max"
+                        value={maxYear || ""}
+                        onChange={(e) => setMaxYear(e.target.value ? parseInt(e.target.value) : null)}
+                        className="flex-1 px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.1)] text-white text-sm placeholder-white/40 focus:outline-none focus:border-[#6C5CE7]/50"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Minimum Puan */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Minimum Puan</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {[null, 5, 6, 7, 8, 9].map((puan) => (
+                        <button
+                          key={puan ?? "all"}
+                          onClick={() => handleMinPuanChange(puan)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                            minPuan === puan
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {puan === null ? "Tümü" : `${puan}+`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Türler */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Türler</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {(tmdbFilter === "all" ? COMBINED_GENRES : tmdbFilter === "tv" ? TV_GENRES : FILM_GENRES).map((genre) => (
+                        <button
+                          key={genre.id}
+                          onClick={() => {
+                            if (selectedGenres.includes(genre.id)) {
+                              setSelectedGenres(selectedGenres.filter(id => id !== genre.id));
+                            } else {
+                              setSelectedGenres([...selectedGenres, genre.id]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                            selectedGenres.includes(genre.id)
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {genre.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Kitap Tab Filters */}
+              {activeTab === "kitaplar" && (
+                <>
+                  {/* Dil Seçimi */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Dil</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {bookLanguages.map((lang) => (
+                        <button
+                          key={lang.value}
+                          onClick={() => handleBookLangChange(lang.value)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                            bookLang === lang.value
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Kategori */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/80 mb-3">Kategori</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      {bookCategories.map((cat) => (
+                        <button
+                          key={cat.value}
+                          onClick={() => handleBookCategoryChange(cat.value)}
+                          className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                            bookCategory === cat.value
+                              ? "bg-[#6C5CE7] text-white"
+                              : "bg-[rgba(255,255,255,0.08)] text-white/70 hover:bg-[rgba(255,255,255,0.12)]"
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer Actions - Safe area için extra padding */}
+            <div className="flex-shrink-0 p-5 pb-8 border-t border-[rgba(255,255,255,0.08)] flex gap-3 bg-[rgba(15,15,25,0.98)]">
+              <button
+                onClick={() => {
+                  resetFilters();
+                  setShowMobileFilters(false);
+                }}
+                className="flex-1 py-3.5 rounded-xl bg-[rgba(255,255,255,0.08)] text-white/70 font-medium hover:bg-[rgba(255,255,255,0.12)] transition-all"
+              >
+                Sıfırla
+              </button>
+              <button
+                onClick={() => {
+                  applyFilters();
+                  setShowMobileFilters(false);
+                }}
+                className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-[#6C5CE7] to-[#a29bfe] text-white font-semibold hover:shadow-lg hover:shadow-[#6C5CE7]/25 transition-all"
+              >
+                Uygula
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

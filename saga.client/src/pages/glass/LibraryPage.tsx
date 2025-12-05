@@ -138,7 +138,7 @@ export default function LibraryPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4">
         <GlassCard className="text-center py-12">
           <BookOpen size={48} className="mx-auto mb-4 text-[#8E8E93]" />
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -154,14 +154,19 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 px-4 lg:px-6">
+      {/* Header - Modern */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Kütüphanem</h1>
-          <p className="text-[rgba(255,255,255,0.5)] text-sm mt-1">
-            {stats.total} içerik
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00b894] to-[#00CEC9] flex items-center justify-center shadow-lg shadow-[#00b894]/20">
+            <BookOpen size={20} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white">Kütüphanem</h1>
+            <p className="text-xs text-[rgba(255,255,255,0.5)]">
+              {stats.total} içerik
+            </p>
+          </div>
         </div>
       </div>
 

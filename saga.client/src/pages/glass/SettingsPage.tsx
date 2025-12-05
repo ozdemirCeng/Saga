@@ -16,6 +16,7 @@ import {
   Check,
   ChevronRight,
   Upload,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { kullaniciApi, ayarlarApi, authApi } from "../../services/api";
@@ -389,7 +390,7 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-4 lg:px-0">
         <GlassCard className="text-center py-12">
           <User size={48} className="mx-auto mb-4 text-[#8E8E93]" />
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -405,8 +406,19 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">Ayarlar</h1>
+    <div className="max-w-4xl mx-auto px-4 lg:px-0">
+      {/* Header - Modern */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#a29bfe] to-[#6C5CE7] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/20">
+          <Settings size={20} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-white">Ayarlar</h1>
+          <p className="text-xs text-[rgba(255,255,255,0.5)]">
+            Hesap ve tercihler
+          </p>
+        </div>
+      </div>
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar */}

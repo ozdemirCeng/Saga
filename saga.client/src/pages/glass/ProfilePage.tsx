@@ -468,7 +468,7 @@ export default function ProfilePage() {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 lg:px-0">
       {/* Profile Header */}
       <GlassCard className="mb-8">
         <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
