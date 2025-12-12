@@ -255,10 +255,23 @@ export default function ListsPage() {
                         </button>
                       </Menu.Target>
 
-                      <Menu.Dropdown>
+                      <Menu.Dropdown
+                        style={{
+                          backgroundColor: "rgba(20, 20, 35, 0.95)",
+                          backdropFilter: "blur(20px)",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          borderRadius: "12px",
+                          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+                        }}
+                      >
                         <Menu.Item
                           leftSection={<Edit3 size={14} />}
                           onClick={() => navigate(`/liste/${liste.id}/duzenle`)}
+                          style={{
+                            color: "rgba(255, 255, 255, 0.9)",
+                            backgroundColor: "transparent",
+                          }}
+                          className="hover:bg-[rgba(255,255,255,0.08)]"
                         >
                           Düzenle
                         </Menu.Item>
@@ -271,18 +284,29 @@ export default function ListsPage() {
                             )
                           }
                           onClick={() => handleTogglePrivacy(liste)}
+                          style={{
+                            color: "rgba(255, 255, 255, 0.9)",
+                            backgroundColor: "transparent",
+                          }}
+                          className="hover:bg-[rgba(255,255,255,0.08)]"
                         >
                           {liste.herkeseAcik ? "Gizli Yap" : "Herkese Aç"}
                         </Menu.Item>
                         <Menu.Item
                           leftSection={<Share2 size={14} />}
                           onClick={() => handleShare(liste)}
+                          style={{
+                            color: "rgba(255, 255, 255, 0.9)",
+                            backgroundColor: "transparent",
+                          }}
+                          className="hover:bg-[rgba(255,255,255,0.08)]"
                         >
                           Paylaş
                         </Menu.Item>
-                        <Menu.Divider />
+                        <Menu.Divider
+                          style={{ borderColor: "rgba(255, 255, 255, 0.1)" }}
+                        />
                         <Menu.Item
-                          color="red"
                           leftSection={
                             deleteLoading === liste.id ? (
                               <Loader2 size={14} className="animate-spin" />
@@ -292,6 +316,11 @@ export default function ListsPage() {
                           }
                           onClick={() => handleDelete(liste.id)}
                           disabled={deleteLoading === liste.id}
+                          style={{
+                            color: "#ff6b6b",
+                            backgroundColor: "transparent",
+                          }}
+                          className="hover:bg-[rgba(255,107,107,0.1)]"
                         >
                           Sil
                         </Menu.Item>

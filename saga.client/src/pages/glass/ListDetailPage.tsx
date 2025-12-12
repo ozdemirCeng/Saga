@@ -209,7 +209,7 @@ export default function ListDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 lg:px-0">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-8 h-8 skeleton rounded-full" />
           <div className="h-6 w-32 skeleton rounded" />
@@ -227,7 +227,7 @@ export default function ListDetailPage() {
   // Error state
   if (error || !liste) {
     return (
-      <div className="max-w-4xl mx-auto px-4 lg:px-0">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <GlassCard className="text-center py-12">
           <List size={48} className="mx-auto mb-4 text-[#fd79a8]" />
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -246,7 +246,7 @@ export default function ListDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 lg:px-0 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 space-y-6">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
@@ -377,10 +377,23 @@ export default function ListDetailPage() {
                   </button>
                 </Menu.Target>
 
-                <Menu.Dropdown>
+                <Menu.Dropdown
+                  style={{
+                    backgroundColor: "rgba(20, 20, 35, 0.95)",
+                    backdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "12px",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+                  }}
+                >
                   <Menu.Item
                     leftSection={<Edit2 size={14} />}
                     onClick={() => navigate(`/liste/${liste.id}/duzenle`)}
+                    style={{
+                      color: "rgba(255, 255, 255, 0.9)",
+                      backgroundColor: "transparent",
+                    }}
+                    className="hover:bg-[rgba(255,255,255,0.08)]"
                   >
                     Düzenle
                   </Menu.Item>
@@ -393,20 +406,33 @@ export default function ListDetailPage() {
                       )
                     }
                     onClick={handleTogglePrivacy}
+                    style={{
+                      color: "rgba(255, 255, 255, 0.9)",
+                      backgroundColor: "transparent",
+                    }}
+                    className="hover:bg-[rgba(255,255,255,0.08)]"
                   >
                     {liste.herkeseAcik ? "Gizli Yap" : "Herkese Aç"}
                   </Menu.Item>
                   <Menu.Item
                     leftSection={<Share2 size={14} />}
                     onClick={handleShare}
+                    style={{
+                      color: "rgba(255, 255, 255, 0.9)",
+                      backgroundColor: "transparent",
+                    }}
+                    className="hover:bg-[rgba(255,255,255,0.08)]"
                   >
                     Paylaş
                   </Menu.Item>
-                  <Menu.Divider />
+                  <Menu.Divider
+                    style={{ borderColor: "rgba(255, 255, 255, 0.1)" }}
+                  />
                   <Menu.Item
-                    color="red"
                     leftSection={<Trash2 size={14} />}
                     onClick={handleDelete}
+                    style={{ color: "#ff6b6b", backgroundColor: "transparent" }}
+                    className="hover:bg-[rgba(255,107,107,0.1)]"
                   >
                     Sil
                   </Menu.Item>

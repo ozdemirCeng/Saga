@@ -717,7 +717,8 @@ function LibraryDropdown({
     { value: "okunacak", label: "Okunacak", icon: <BookMarked size={16} /> },
   ];
 
-  const statuses = icerikTur === "film" ? filmStatuses : kitapStatuses;
+  // Film ve dizi için izlendi/izleniyor/izlenecek, kitap için okundu/okunuyor/okunacak
+  const statuses = icerikTur === "kitap" ? kitapStatuses : filmStatuses;
   const currentLabel =
     statuses.find((s) => s.value === currentStatus)?.label ||
     "Kütüphaneye Ekle";
@@ -863,7 +864,7 @@ function ListeDropdown({ icerikId }: ListeDropdownProps) {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 w-56 z-50 glass-panel p-2 animate-scale-in max-h-64 overflow-y-auto">
+          <div className="absolute top-full right-0 sm:left-0 sm:right-auto mt-2 w-56 z-50 glass-panel p-2 animate-scale-in max-h-64 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 size={20} className="animate-spin text-[#8E8E93]" />
@@ -1314,7 +1315,7 @@ export default function DetailPage() {
           {icerik.aciklama && <ExpandableDescription text={icerik.aciklama} />}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap justify-center md:justify-start gap-3 mb-4 lg:mb-6">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap justify-center md:justify-start gap-3 mb-4 lg:mb-6">
             <LibraryDropdown
               icerikTur={icerik.tur}
               currentStatus={kutuphaneDurumu}

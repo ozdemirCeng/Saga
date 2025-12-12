@@ -1068,16 +1068,30 @@ export default function ProfilePage() {
                       herkeseAcik: !listeForm.herkeseAcik,
                     })
                   }
-                  className={`w-12 h-6 rounded-full transition-colors ${
-                    listeForm.herkeseAcik ? "bg-[#00b894]" : "bg-white/20"
-                  } relative`}
+                  style={{
+                    backgroundColor: listeForm.herkeseAcik
+                      ? "#00b894"
+                      : "rgba(255,255,255,0.2)",
+                    width: "48px",
+                    height: "24px",
+                    borderRadius: "12px",
+                    position: "relative",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                  }}
                 >
                   <span
-                    className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      listeForm.herkeseAcik
-                        ? "translate-x-6"
-                        : "translate-x-0.5"
-                    }`}
+                    style={{
+                      position: "absolute",
+                      top: "4px",
+                      left: listeForm.herkeseAcik ? "28px" : "4px",
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "50%",
+                      backgroundColor: "white",
+                      transition: "left 0.2s",
+                    }}
                   />
                 </button>
                 <span className="text-sm text-[#8E8E93]">Herkese açık</span>

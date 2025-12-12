@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, Loader2, Sparkles } from "lucide-react";
+import { Mail, Lock, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../services/supabase";
 
 // ============================================
@@ -30,6 +30,7 @@ function NebulaInput({
   onChange,
   icon,
   required,
+  showPasswordToggle,
 }: {
   type?: string;
   placeholder?: string;
@@ -37,7 +38,15 @@ function NebulaInput({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   icon?: React.ReactNode;
   required?: boolean;
+  showPasswordToggle?: boolean;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const inputType = showPasswordToggle
+    ? showPassword
+      ? "text"
+      : "password"
+    : type;
+
   return (
     <div className="relative">
       {icon && (
@@ -46,15 +55,24 @@ function NebulaInput({
         </div>
       )}
       <input
-        type={type}
+        type={inputType}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         required={required}
         className={`w-full px-4 py-3.5 rounded-xl text-white text-sm bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/50 focus:border-transparent placeholder:text-[rgba(255,255,255,0.4)] transition-all ${
           icon ? "pl-12" : ""
-        }`}
+        } ${showPasswordToggle ? "pr-12" : ""}`}
       />
+      {showPasswordToggle && (
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)] hover:text-[rgba(255,255,255,0.7)] transition-colors"
+        >
+          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      )}
     </div>
   );
 }
@@ -80,7 +98,21 @@ export default function LoginPage() {
       if (error) throw error;
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Giriş yapılırken hata oluştu.");
+      // Hata mesajlarını Türkçeleştir
+      let errorMessage = "Giriş yapılırken hata oluştu.";
+      if (err.message) {
+        if (err.message.includes("Invalid login credentials")) {
+          errorMessage = "E-posta veya şifre hatalı. Lütfen tekrar deneyin.";
+        } else if (err.message.includes("Email not confirmed")) {
+          errorMessage =
+            "E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.";
+        } else if (err.message.includes("Too many requests")) {
+          errorMessage = "Çok fazla deneme yaptınız. Lütfen biraz bekleyin.";
+        } else if (err.message.includes("Network")) {
+          errorMessage = "Bağlantı hatası. İnternet bağlantınızı kontrol edin.";
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -142,6 +174,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             icon={<Lock size={18} />}
             required
+            showPasswordToggle
           />
 
           <button

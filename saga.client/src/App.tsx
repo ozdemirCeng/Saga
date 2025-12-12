@@ -17,6 +17,7 @@ import SettingsPage from "./pages/glass/SettingsPage";
 import LibraryPage from "./pages/glass/LibraryPage";
 import ListsPage from "./pages/glass/ListsPage";
 import ListDetailPage from "./pages/glass/ListDetailPage";
+import ListEditPage from "./pages/glass/ListEditPage";
 import LikesPage from "./pages/glass/LikesPage";
 import SearchPage from "./pages/glass/SearchPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -52,6 +53,7 @@ function App() {
                   <Route path="/ayarlar" element={<SettingsPage />} />
                   <Route path="/kutuphane" element={<LibraryPage />} />
                   <Route path="/listelerim" element={<ListsPage />} />
+                  <Route path="/liste/:id/duzenle" element={<ListEditPage />} />
                   <Route path="/liste/:id" element={<ListDetailPage />} />
                   <Route path="/begeniler" element={<LikesPage />} />
                   <Route path="/bildirimler" element={<NotificationsPage />} />

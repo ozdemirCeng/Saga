@@ -18,13 +18,25 @@ import { kutuphaneApi } from "../../services/api";
 import type { KutuphaneDurumu } from "../../services/api";
 
 // Kütüphane durumları - Backend enum değerleri: izlendi, izlenecek, okundu, okunacak, devam_ediyor
+// Film/Dizi durumları önce, sonra Kitap durumları
 const DURUM_OPTIONS = [
+  // Film/Dizi
   { value: "devam_ediyor", label: "İzleniyor", icon: Eye, color: "#6C5CE7" },
   { value: "izlendi", label: "İzlendi", icon: CheckCircle, color: "#00b894" },
   { value: "izlenecek", label: "İzlenecek", icon: Clock, color: "#fdcb6e" },
+  // Kitap
   { value: "okundu", label: "Okundu", icon: CheckCircle, color: "#00b894" },
   { value: "okunacak", label: "Okunacak", icon: Clock, color: "#fdcb6e" },
 ] as const;
+
+// İçerik türüne göre durum label'ını döndür
+function getDurumLabel(durum: string, icerikTur: string): string {
+  if (durum === "devam_ediyor") {
+    return icerikTur === "kitap" ? "Okunuyor" : "İzleniyor";
+  }
+  const found = DURUM_OPTIONS.find((d) => d.value === durum);
+  return found?.label || durum;
+}
 
 // ============================================
 // NEBULA UI COMPONENTS
@@ -224,7 +236,7 @@ export default function LibraryPage() {
 
       {/* Filters */}
       <GlassCard className="p-4">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-[rgba(255,255,255,0.5)]" />
             <span className="text-sm text-[rgba(255,255,255,0.5)]">
@@ -232,34 +244,37 @@ export default function LibraryPage() {
             </span>
           </div>
 
-          {/* Durum Filter */}
-          <select
-            value={selectedDurum}
-            onChange={(e) => setSelectedDurum(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white text-sm focus:outline-none focus:border-[#6C5CE7]"
-          >
-            <option value="tumu">Tüm Durumlar</option>
-            {DURUM_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* Filters Row - yan yana */}
+          <div className="flex items-center gap-2 flex-1">
+            {/* Durum Filter */}
+            <select
+              value={selectedDurum}
+              onChange={(e) => setSelectedDurum(e.target.value)}
+              className="flex-1 sm:flex-none pl-3 pr-8 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white text-sm focus:outline-none focus:border-[#6C5CE7] appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23999%22%20d%3D%22M6%208L1%203h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center]"
+            >
+              <option value="tumu">Tüm Durumlar</option>
+              {DURUM_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
 
-          {/* Tür Filter */}
-          <select
-            value={selectedTur}
-            onChange={(e) => setSelectedTur(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white text-sm focus:outline-none focus:border-[#6C5CE7]"
-          >
-            <option value="tumu">Tüm Türler</option>
-            <option value="film">Film</option>
-            <option value="dizi">Dizi</option>
-            <option value="kitap">Kitap</option>
-          </select>
+            {/* Tür Filter */}
+            <select
+              value={selectedTur}
+              onChange={(e) => setSelectedTur(e.target.value)}
+              className="flex-1 sm:flex-none pl-3 pr-8 py-2 rounded-lg bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] text-white text-sm focus:outline-none focus:border-[#6C5CE7] appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%23999%22%20d%3D%22M6%208L1%203h10z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.75rem_center]"
+            >
+              <option value="tumu">Tüm Türler</option>
+              <option value="film">Film</option>
+              <option value="dizi">Dizi</option>
+              <option value="kitap">Kitap</option>
+            </select>
+          </div>
 
           {/* View Mode */}
-          <div className="flex items-center gap-1 ml-auto">
+          <div className="flex items-center gap-1 sm:ml-auto">
             <button
               onClick={() => setViewMode("grid")}
               className={`p-2 rounded-lg transition-colors ${
@@ -332,8 +347,7 @@ export default function LibraryPage() {
                           : "bg-[#d63031] text-white"
                       }`}
                     >
-                      {DURUM_OPTIONS.find((d) => d.value === item.durum)
-                        ?.label || item.durum}
+                      {getDurumLabel(item.durum, tur)}
                     </div>
                   </div>
                   <p className="text-sm font-medium text-white truncate">
@@ -431,8 +445,7 @@ export default function LibraryPage() {
                           : "bg-[#d63031]/20 text-[#d63031]"
                       }`}
                     >
-                      {DURUM_OPTIONS.find((d) => d.value === item.durum)
-                        ?.label || item.durum}
+                      {getDurumLabel(item.durum, tur)}
                     </div>
                   </button>
                 </GlassCard>

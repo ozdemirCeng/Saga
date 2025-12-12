@@ -145,7 +145,7 @@ export function GlassLayout() {
 function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
   const navItems = [
@@ -174,7 +174,7 @@ function MobileNav() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     setShowMenu(false);
     navigate("/giris");
   };
